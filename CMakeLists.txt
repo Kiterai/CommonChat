@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.5)
 project(CommonChat)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/target) 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/target/debug) 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/target/release) 
+
+if(MSVC)
+    add_compile_options("/utf-8")
+endif()
+
 find_package(libuv CONFIG REQUIRED)
 find_package(uvw CONFIG REQUIRED)
 
