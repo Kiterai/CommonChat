@@ -1,10 +1,16 @@
 #include "xr/Manager.hpp"
+#ifdef USE_DESKTOP_MODE
+#include "desktop/DesktopGui.hpp"
+#endif
 
-class Gui
-{
-private:
+class Gui {
+  private:
     XrManager xrManger;
-public:
+#ifdef USE_DESKTOP_MODE
+    DesktopGuiSystem desktopGuiSys;
+#endif
+
+  public:
     Gui();
     ~Gui();
 

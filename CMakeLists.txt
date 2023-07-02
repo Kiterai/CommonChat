@@ -9,19 +9,30 @@ if(MSVC)
     add_compile_options("/utf-8")
 endif()
 
+if(USE_DESKTOP_MODE)
+message("Desktop mode: ON")
+else()
+message("Desktop mode: OFF")
+endif()
+
 find_package(libuv CONFIG REQUIRED)
 find_package(uvw CONFIG REQUIRED)
+if(USE_DESKTOP_MODE)
+find_package(glfw3 CONFIG REQUIRED)
+endif()
 
 # Client
 file(GLOB_RECURSE CLI_SRC client/*.cpp)
 add_executable(CommonChat ${CLI_SRC})
 
-target_link_libraries(CommonChat PRIVATE $<IF:$<TARGET_EXISTS:uv_a>,uv_a,uv>)
 target_link_libraries(CommonChat PRIVATE uvw::uvw)
+if(USE_DESKTOP_MODE)
+target_link_libraries(CommonChat PRIVATE glfw)
+target_compile_definitions(CommonChat PRIVATE USE_DESKTOP_MODE)
+endif()
 
 # Server
 file(GLOB_RECURSE SRV_SRC server/*.cpp)
 add_executable(CommonChatSrv ${SRV_SRC})
 
-target_link_libraries(CommonChatSrv PRIVATE $<IF:$<TARGET_EXISTS:uv_a>,uv_a,uv>)
 target_link_libraries(CommonChatSrv PRIVATE uvw::uvw)

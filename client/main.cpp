@@ -10,5 +10,7 @@ int main() {
     }};
     Gui gui;
     gui.mainloop();
+
+    commThread.join();
     return 0;
 }
