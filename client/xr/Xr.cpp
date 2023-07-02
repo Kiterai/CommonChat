@@ -1,4 +1,4 @@
-#include "./Manager.hpp"
+#include "./Xr.hpp"
 
 XrManager::XrManager()
 {

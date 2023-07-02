@@ -1,4 +1,4 @@
-#include "xr/Manager.hpp"
+#include "xr/Xr.hpp"
 #ifdef USE_DESKTOP_MODE
 #include "desktop/DesktopGui.hpp"
 #endif
