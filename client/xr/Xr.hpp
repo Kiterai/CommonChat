@@ -6,5 +6,5 @@ public:
     XrManager();
     ~XrManager();
 
-    void process();
+    void mainLoop();
 };

@@ -8,7 +8,9 @@ XrManager::~XrManager()
 {
 }
 
-void XrManager::process()
+void XrManager::mainLoop()
 {
-    
+    while(true) {
+        
+    }
 }

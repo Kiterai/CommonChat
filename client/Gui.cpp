@@ -8,9 +8,7 @@ void Gui::mainloop() {
 #ifdef USE_DESKTOP_MODE
     desktopGuiSys.mainLoop();
 #else
-    while (true) {
-        xrManger.process();
-    }
+    xrManger.mainLoop();
 #endif
     return;
 }
