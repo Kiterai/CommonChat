@@ -3,23 +3,25 @@
 #include "DesktopGui.hpp"
 #include "GLFWHelper.hpp"
 
-DesktopGuiSystem::DesktopGuiSystem() {}
-
-DesktopGuiSystem::~DesktopGuiSystem() {}
-
-void DesktopGuiSystem::mainLoop() {
+DesktopGuiSystem::DesktopGuiSystem() {
     if (!glfwInit())
         __GLFW_ERROR_THROW
 
-    auto window = glfwCreateWindow(1280, 720, "CommonChat", NULL, NULL);
-    if (!window)
-        __GLFW_TERMINATE_ERROR_THROW
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
+    window = glfwCreateWindow(1280, 720, "CommonChat", NULL, NULL);
+    if (!window)
+        __GLFW_ERROR_THROW
+}
+
+DesktopGuiSystem::~DesktopGuiSystem() {
+    glfwTerminate();
+}
+
+void DesktopGuiSystem::mainLoop() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
     }
-
-    glfwTerminate();
 }
 
 #endif

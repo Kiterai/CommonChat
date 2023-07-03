@@ -2,6 +2,9 @@
 #include <stdexcept>
 
 class DesktopGuiSystem {
+  private:
+    GLFWwindow *window;
+
   public:
     DesktopGuiSystem();
     ~DesktopGuiSystem();
