@@ -2,6 +2,7 @@
 
 #include "DesktopGui.hpp"
 #include "GLFWHelper.hpp"
+#include "../graphics/vulkan/VulkanManager.hpp"
 
 DesktopGuiSystem::DesktopGuiSystem() {
     if (!glfwInit())
@@ -12,6 +13,8 @@ DesktopGuiSystem::DesktopGuiSystem() {
     window = glfwCreateWindow(1280, 720, "CommonChat", NULL, NULL);
     if (!window)
         __GLFW_ERROR_THROW
+
+    g = makeFromDesktopGui_Vulkan(window);
 }
 
 DesktopGuiSystem::~DesktopGuiSystem() {
