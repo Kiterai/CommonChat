@@ -3,6 +3,7 @@
 #ifdef USE_DESKTOP_MODE
 #include "SetupWithGlfw.hpp"
 #endif
+#include <future>
 using namespace std::string_view_literals;
 
 vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const Swapchain &swapchain) {
@@ -34,6 +35,99 @@ vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const Swap
     renderpassCreateInfo.pDependencies = nullptr;
 
     return device.createRenderPassUnique(renderpassCreateInfo);
+}
+
+vk::UniquePipelineLayout createPipelineLayout(vk::Device device) {
+    vk::PipelineLayoutCreateInfo layoutCreateInfo;
+    layoutCreateInfo.setLayoutCount = 0;
+    layoutCreateInfo.pSetLayouts = nullptr;
+
+    return device.createPipelineLayoutUnique(layoutCreateInfo);
+}
+
+vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::RenderPass renderpass, vk::PipelineLayout pipelineLayout) {
+    vk::Viewport viewports[1];
+    viewports[0].x = 0.0;
+    viewports[0].y = 0.0;
+    viewports[0].minDepth = 0.0;
+    viewports[0].maxDepth = 1.0;
+    viewports[0].width = extent.width;
+    viewports[0].height = extent.height;
+
+    vk::Rect2D scissors[1];
+    scissors[0].offset = vk::Offset2D{0, 0};
+    scissors[0].extent = extent;
+
+    vk::PipelineViewportStateCreateInfo viewportState;
+    viewportState.viewportCount = 1;
+    viewportState.pViewports = viewports;
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = scissors;
+
+    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+    vertexInputInfo.vertexBindingDescriptionCount = 0;
+    vertexInputInfo.pVertexBindingDescriptions = nullptr;
+
+    vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+    inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+    inputAssembly.primitiveRestartEnable = false;
+
+    vk::PipelineRasterizationStateCreateInfo rasterizer;
+    rasterizer.depthClampEnable = false;
+    rasterizer.rasterizerDiscardEnable = false;
+    rasterizer.polygonMode = vk::PolygonMode::eFill;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+    rasterizer.frontFace = vk::FrontFace::eClockwise;
+    rasterizer.depthBiasEnable = false;
+
+    vk::PipelineMultisampleStateCreateInfo multisample;
+    multisample.sampleShadingEnable = false;
+    multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
+
+    vk::PipelineColorBlendAttachmentState blendattachment[1];
+    blendattachment[0].colorWriteMask =
+        vk::ColorComponentFlagBits::eA |
+        vk::ColorComponentFlagBits::eR |
+        vk::ColorComponentFlagBits::eG |
+        vk::ColorComponentFlagBits::eB;
+    blendattachment[0].blendEnable = false;
+
+    vk::PipelineColorBlendStateCreateInfo blend;
+    blend.logicOpEnable = false;
+    blend.attachmentCount = 1;
+    blend.pAttachments = blendattachment;
+
+    auto featVertShader = std::async(std::launch::async, [device]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
+    auto featFragShader = std::async(std::launch::async, [device]() { return createShaderModuleFromFile(device, "shader.frag.spv"); });
+
+    vk::UniqueShaderModule vertShader = featVertShader.get();
+    vk::UniqueShaderModule fragShader = featFragShader.get();
+
+    vk::PipelineShaderStageCreateInfo shaderStage[2];
+    shaderStage[0].stage = vk::ShaderStageFlagBits::eVertex;
+    shaderStage[0].module = vertShader.get();
+    shaderStage[0].pName = "main";
+    shaderStage[1].stage = vk::ShaderStageFlagBits::eFragment;
+    shaderStage[1].module = fragShader.get();
+    shaderStage[1].pName = "main";
+
+    vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+    pipelineCreateInfo.pViewportState = &viewportState;
+    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+    pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+    pipelineCreateInfo.pRasterizationState = &rasterizer;
+    pipelineCreateInfo.pMultisampleState = &multisample;
+    pipelineCreateInfo.pColorBlendState = &blend;
+    pipelineCreateInfo.layout = pipelineLayout;
+    pipelineCreateInfo.renderPass = renderpass;
+    pipelineCreateInfo.subpass = 0;
+    pipelineCreateInfo.stageCount = 2;
+    pipelineCreateInfo.pStages = shaderStage;
+
+    return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
 class VulkanManager : public IGraphics {
