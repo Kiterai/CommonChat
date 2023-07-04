@@ -1,0 +1,68 @@
+#include "Helper.hpp"
+
+std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueFamilyProperties> queueProps) {
+    UsingQueueSet props;
+    bool existsGraphicsQueue = false;
+
+    for (uint32_t j = 0; j < queueProps.size(); j++) {
+        if (queueProps[j].queueFlags & vk::QueueFlagBits::eGraphics) {
+            existsGraphicsQueue = true;
+            props.graphicsQueueFamilyIndex = j;
+            break;
+        }
+    }
+
+    if (!existsGraphicsQueue)
+        return std::nullopt;
+    return props;
+}
+
+std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device, const Swapchain &swapchain) {
+    auto images = device.getSwapchainImagesKHR(swapchain.swapchain.get());
+    std::vector<vk::UniqueImageView> imageViews(images.size());
+
+    for (uint32_t i = 0; i < images.size(); i++) {
+        const auto &image = images[i];
+
+        vk::ImageViewCreateInfo imgViewCreateInfo;
+        imgViewCreateInfo.image = image;
+        imgViewCreateInfo.viewType = vk::ImageViewType::e2D;
+        imgViewCreateInfo.format = swapchain.format;
+        imgViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
+        imgViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
+        imgViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
+        imgViewCreateInfo.components.a = vk::ComponentSwizzle::eIdentity;
+        imgViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        imgViewCreateInfo.subresourceRange.baseMipLevel = 0;
+        imgViewCreateInfo.subresourceRange.levelCount = 1;
+        imgViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+        imgViewCreateInfo.subresourceRange.layerCount = 1;
+
+        imageViews[i] = device.createImageViewUnique(imgViewCreateInfo);
+    }
+
+    return imageViews;
+}
+
+std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews) {
+    std::vector<vk::UniqueFramebuffer> frameBufs(imageViews.size());
+
+    for (uint32_t i = 0; i < imageViews.size(); i++) {
+        std::vector<vk::ImageView> frameBufAttachments(imageViews.size());
+        for (uint32_t j = 0; j < imageViews.size(); j++) {
+            frameBufAttachments[j] = imageViews[j].get()[i].get();
+        }
+
+        vk::FramebufferCreateInfo frameBufCreateInfo;
+        frameBufCreateInfo.width = extent.width;
+        frameBufCreateInfo.height = extent.height;
+        frameBufCreateInfo.layers = 1;
+        frameBufCreateInfo.renderPass = renderpass;
+        frameBufCreateInfo.attachmentCount = frameBufAttachments.size();
+        frameBufCreateInfo.pAttachments = frameBufAttachments.data();
+
+        frameBufs[i] = device.createFramebufferUnique(frameBufCreateInfo);
+    }
+
+    return frameBufs;
+}
