@@ -38,6 +38,18 @@ struct UsingQueueSet {
     uint32_t graphicsQueueFamilyIndex;
 };
 
+struct Swapchain {
+    vk::Format format;
+    vk::Extent2D extent;
+    vk::UniqueSwapchainKHR swapchain;
+};
+
+struct RenderTarget {
+    Swapchain swapchain;
+    std::vector<vk::UniqueImageView> imageViews;
+    std::vector<vk::UniqueFramebuffer> frameBufs;
+};
+
 std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueFamilyProperties> queueProps) {
     UsingQueueSet props;
     bool existsGraphicsQueue = false;
@@ -112,17 +124,6 @@ vk::PhysicalDevice chooseSuitablePhysicalDeviceWithGlfw(vk::Instance instance, v
     return suitablePhysicalDevice.value();
 }
 
-struct Swapchain {
-    vk::Format format;
-    vk::Extent2D extent;
-    vk::UniqueSwapchainKHR swapchain;
-};
-
-struct RenderTarget {
-    Swapchain swapchain;
-    std::vector<vk::UniqueImageView> imageViews;
-};
-
 Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
     vk::SurfaceCapabilitiesKHR surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
     std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(surface);
@@ -190,6 +191,29 @@ std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device
     }
 
     return imageViews;
+}
+
+std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews) {
+    std::vector<vk::UniqueFramebuffer> frameBufs(imageViews.size());
+
+    for (uint32_t i = 0; i < imageViews.size(); i++) {
+        std::vector<vk::ImageView> frameBufAttachments(imageViews.size());
+        for (uint32_t j = 0; j < imageViews.size(); j++) {
+            frameBufAttachments[j] = imageViews[j].get()[i].get();
+        }
+
+        vk::FramebufferCreateInfo frameBufCreateInfo;
+        frameBufCreateInfo.width = extent.width;
+        frameBufCreateInfo.height = extent.height;
+        frameBufCreateInfo.layers = 1;
+        frameBufCreateInfo.renderPass = renderpass;
+        frameBufCreateInfo.attachmentCount = frameBufAttachments.size();
+        frameBufCreateInfo.pAttachments = frameBufAttachments.data();
+
+        frameBufs[i] = device.createFramebufferUnique(frameBufCreateInfo);
+    }
+
+    return frameBufs;
 }
 
 std::vector<RenderTarget> createRenderTargetsWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
