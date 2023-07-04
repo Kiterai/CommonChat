@@ -1,4 +1,5 @@
 #include "Helper.hpp"
+#include <fstream>
 
 std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueFamilyProperties> queueProps) {
     UsingQueueSet props;
@@ -65,4 +66,27 @@ std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device devic
     }
 
     return frameBufs;
+}
+
+std::vector<char> loadFile(const std::filesystem::path &path) {
+    size_t fileSz = std::filesystem::file_size(path);
+
+    std::ifstream file(path, std::ios_base::binary);
+
+    std::vector<char> fileData(fileSz);
+    file.read(fileData.data(), fileSz);
+
+    return fileData;
+}
+
+vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std::vector<char> &binary) {
+    vk::ShaderModuleCreateInfo shaderCreateInfo;
+    shaderCreateInfo.codeSize = binary.size();
+    shaderCreateInfo.pCode = reinterpret_cast<const uint32_t *>(binary.data());
+
+    return device.createShaderModuleUnique(shaderCreateInfo);
+}
+
+vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, std::filesystem::path &path) {
+    return createShaderModuleFromBinary(device, loadFile(path));
 }
