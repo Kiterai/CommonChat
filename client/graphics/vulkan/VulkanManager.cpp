@@ -216,6 +216,37 @@ std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device devic
     return frameBufs;
 }
 
+vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const Swapchain &swapchain) {
+    vk::AttachmentDescription attachments[1];
+    attachments[0].format = swapchain.format;
+    attachments[0].samples = vk::SampleCountFlagBits::e1;
+    attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
+    attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+    attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+    attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+    vk::AttachmentReference subpass0_attachmentRefs[1];
+    subpass0_attachmentRefs[0].attachment = 0;
+    subpass0_attachmentRefs[0].layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+    vk::SubpassDescription subpasses[1];
+    subpasses[0].pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+    subpasses[0].colorAttachmentCount = 1;
+    subpasses[0].pColorAttachments = subpass0_attachmentRefs;
+
+    vk::RenderPassCreateInfo renderpassCreateInfo;
+    renderpassCreateInfo.attachmentCount = 1;
+    renderpassCreateInfo.pAttachments = attachments;
+    renderpassCreateInfo.subpassCount = 1;
+    renderpassCreateInfo.pSubpasses = subpasses;
+    renderpassCreateInfo.dependencyCount = 0;
+    renderpassCreateInfo.pDependencies = nullptr;
+
+    return device.createRenderPassUnique(renderpassCreateInfo);
+}
+
 std::vector<RenderTarget> createRenderTargetsWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
     auto swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device, surface);
     auto imgViews = createImageViewsFromSwapchain(device, swapchain);
