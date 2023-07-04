@@ -87,6 +87,6 @@ vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std
     return device.createShaderModuleUnique(shaderCreateInfo);
 }
 
-vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, std::filesystem::path &path) {
+vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::filesystem::path &path) {
     return createShaderModuleFromBinary(device, loadFile(path));
 }

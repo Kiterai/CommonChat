@@ -26,4 +26,4 @@ std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device
 std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews);
 
 vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std::vector<char> &binary);
-vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, std::filesystem::path &path);
+vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::filesystem::path &path);
