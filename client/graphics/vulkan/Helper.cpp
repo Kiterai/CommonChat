@@ -105,10 +105,10 @@ vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool p
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
     allocInfo.commandBufferCount = 1;
 
-    device.allocateCommandBuffersUnique(allocInfo);
+    return std::move(device.allocateCommandBuffersUnique(allocInfo)[0]);
 }
 
-void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence = {}) {
+void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence) {
     vk::SubmitInfo submitInfo;
     submitInfo.commandBufferCount = cmdBufs.size();
     submitInfo.pCommandBuffers = cmdBufs.begin();
