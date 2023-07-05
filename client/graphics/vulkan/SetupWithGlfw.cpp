@@ -1,8 +1,8 @@
 #ifdef USE_DESKTOP_MODE
 
 #include "SetupWithGlfw.hpp"
-#include "Helper.hpp"
 #include "../../desktop/GLFWHelper.hpp"
+#include "Helper.hpp"
 
 #ifdef _DEBUG
 #include <iostream>
@@ -92,6 +92,18 @@ vk::PhysicalDevice chooseSuitablePhysicalDeviceWithGlfw(vk::Instance instance, v
     return suitablePhysicalDevice.value();
 }
 
+vk::SurfaceFormatKHR chooseSurfaceFormat(const std::vector<vk::SurfaceFormatKHR> formats) {
+    for (const auto &format : formats) {
+        if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+            return format;
+    }
+    return formats[0];
+}
+
+vk::PresentModeKHR chooseSurfacePresentMode(const std::vector<vk::PresentModeKHR> modes) {
+    return vk::PresentModeKHR::eFifo;
+}
+
 Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
     vk::SurfaceCapabilitiesKHR surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
     std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(surface);
@@ -110,8 +122,8 @@ Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::D
 
     Swapchain swapchain;
 
-    vk::SurfaceFormatKHR swapchainFormat = surfaceFormats[0];         // TODO
-    vk::PresentModeKHR swapchainPresentMode = surfacePresentModes[0]; // TODO
+    vk::SurfaceFormatKHR swapchainFormat = chooseSurfaceFormat(surfaceFormats);
+    vk::PresentModeKHR swapchainPresentMode = chooseSurfacePresentMode(surfacePresentModes);
 
     swapchain.format = swapchain.format;
     swapchain.extent = surfaceCapabilities.currentExtent;
