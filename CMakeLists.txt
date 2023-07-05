@@ -34,6 +34,13 @@ target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
 endif()
 
+add_custom_command(
+    TARGET CommonChat
+    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
+    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.vert -o ${PROJECT_BINARY_DIR}/shader.vert.spv
+    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.frag -o ${PROJECT_BINARY_DIR}/shader.frag.spv
+)
+
 # Server
 file(GLOB_RECURSE SRV_SRC server/*.cpp)
 add_executable(CommonChatSrv ${SRV_SRC})
