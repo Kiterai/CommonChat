@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vulkan/vulkan.hpp>
-#include <vector>
-#include <optional>
 #include <filesystem>
+#include <optional>
+#include <vector>
+#include <vulkan/vulkan.hpp>
 
 struct UsingQueueSet {
     uint32_t graphicsQueueFamilyIndex;
@@ -27,3 +27,32 @@ std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device devic
 
 vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std::vector<char> &binary);
 vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::filesystem::path &path);
+
+vk::UniqueCommandPool createCommandPool(vk::Device device, uint32_t queueFamilyIndex);
+vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool);
+void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence = {});
+
+struct CommandRec {
+    vk::CommandBuffer cmdBuf;
+    CommandRec(vk::CommandBuffer cmdBuf) : cmdBuf(cmdBuf) {
+        vk::CommandBufferBeginInfo beginInfo;
+        cmdBuf.begin(beginInfo);
+    }
+    ~CommandRec() {
+        cmdBuf.end();
+    }
+};
+
+struct CommandExec {
+    vk::CommandBuffer cmdBuf;
+    vk::Queue queue;
+    vk::Fence fence;
+    CommandExec(vk::CommandBuffer cmdBuf, vk::Queue queue, vk::Fence fence = {}) : cmdBuf(cmdBuf), queue(queue), fence(fence) {
+        vk::CommandBufferBeginInfo beginInfo;
+        cmdBuf.begin(beginInfo);
+    }
+    ~CommandExec() {
+        cmdBuf.end();
+        Submit({cmdBuf}, queue, fence);
+    }
+};

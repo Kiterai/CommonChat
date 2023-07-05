@@ -90,3 +90,27 @@ vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std
 vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::filesystem::path &path) {
     return createShaderModuleFromBinary(device, loadFile(path));
 }
+
+vk::UniqueCommandPool createCommandPool(vk::Device device, uint32_t queueFamilyIndex) {
+    vk::CommandPoolCreateInfo poolCreateInfo;
+    poolCreateInfo.queueFamilyIndex = queueFamilyIndex;
+    poolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer | vk::CommandPoolCreateFlagBits::eTransient;
+
+    return device.createCommandPoolUnique(poolCreateInfo);
+}
+
+vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool) {
+    vk::CommandBufferAllocateInfo allocInfo;
+    allocInfo.commandPool = pool;
+    allocInfo.level = vk::CommandBufferLevel::ePrimary;
+    allocInfo.commandBufferCount = 1;
+
+    device.allocateCommandBuffersUnique(allocInfo);
+}
+
+void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence = {}) {
+    vk::SubmitInfo submitInfo;
+    submitInfo.commandBufferCount = cmdBufs.size();
+    submitInfo.pCommandBuffers = cmdBufs.begin();
+    queue.submit({submitInfo}, fence);
+}
