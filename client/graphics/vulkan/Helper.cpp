@@ -18,8 +18,7 @@ std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueF
     return props;
 }
 
-std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device, const Swapchain &swapchain) {
-    auto images = device.getSwapchainImagesKHR(swapchain.swapchain.get());
+std::vector<vk::UniqueImageView> getImageViewsFromImages(vk::Device device, const std::vector<vk::Image> &images, vk::Format format) {
     std::vector<vk::UniqueImageView> imageViews(images.size());
 
     for (uint32_t i = 0; i < images.size(); i++) {
@@ -28,7 +27,7 @@ std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device
         vk::ImageViewCreateInfo imgViewCreateInfo;
         imgViewCreateInfo.image = image;
         imgViewCreateInfo.viewType = vk::ImageViewType::e2D;
-        imgViewCreateInfo.format = swapchain.format;
+        imgViewCreateInfo.format = format;
         imgViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
         imgViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
         imgViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
@@ -43,6 +42,11 @@ std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device
     }
 
     return imageViews;
+}
+
+std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device, const Swapchain &swapchain) {
+    auto images = device.getSwapchainImagesKHR(swapchain.swapchain.get());
+    return getImageViewsFromImages(device, images, swapchain.format);
 }
 
 std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews) {
