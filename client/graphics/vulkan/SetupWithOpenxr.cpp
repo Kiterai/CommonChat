@@ -87,13 +87,21 @@ vk::Device createDeviceWithOpenxr(xr::Instance xrInstance, xr::SystemId xrSystem
     return vk::Device{tmpDevice};
 }
 
-xr::UniqueSwapchain createSwapchainWithOpenxr(xr::Session xrSession) {
-    auto swapchainFmts = xrSession.enumerateSwapchainFormatsToVector();
-    auto swapchainFmtCnt = swapchainFmts.size();
-
-    xr::SwapchainCreateInfo swapchainCreateInfo;
-
-    return xrSession.createSwapchainUnique(swapchainCreateInfo);
+std::optional<int64_t> chooseXrSwapchainFormat(const std::vector<int64_t> formats) {
+    std::vector<vk::Format> supportFormats = {
+        vk::Format::eB8G8R8A8Srgb,
+        vk::Format::eR8G8B8A8Srgb,
+        vk::Format::eB8G8R8A8Unorm,
+        vk::Format::eR8G8B8A8Unorm,
+    };
+    for (const auto supportFormat : supportFormats) {
+        for (const auto usableFormat : formats) {
+            if (vk::Format(usableFormat) == supportFormat) {
+                return std::make_optional(usableFormat);
+            }
+        }
+    }
+    return std::nullopt;
 }
 
 std::vector<vk::Image> getImagesFromXrSwapchain(xr::Swapchain swapchain) {
