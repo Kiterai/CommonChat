@@ -22,6 +22,9 @@ struct RenderTargetHint {
 };
 
 struct RenderTarget {
+    vk::UniqueRenderPass renderpass;
+    vk::UniquePipeline pipeline;
+
     std::vector<vk::UniqueImageView> imageViews;
     std::vector<vk::UniqueFramebuffer> frameBufs;
 };
