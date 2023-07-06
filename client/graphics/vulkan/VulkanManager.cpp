@@ -4,7 +4,7 @@
 #include "SetupWithGlfw.hpp"
 #endif
 #include <future>
-using namespace std::string_view_literals;
+using namespace std::string_literals;
 
 vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const Swapchain &swapchain) {
     vk::AttachmentDescription attachments[1];
@@ -146,16 +146,15 @@ class VulkanManager : public IGraphics {
                                         renderTargets(createRenderTargetsWithGlfw(physicalDevice, device.get(), surface.get())) {
     }
 
+    VulkanManager(xr::Instance xrInst, xr::SystemId xrSysId) {
+    }
+
   public:
     static pIGraphics makeFromDesktopGui(GLFWwindow *window) {
         return pIGraphics(new VulkanManager{window});
     }
     static pIGraphics makeFromXr(xr::Instance xrInst, xr::SystemId xrSysId) {
-        auto pObj = new VulkanManager{};
-
-        // TODO
-
-        return pIGraphics(pObj);
+        return pIGraphics(new VulkanManager{xrInst, xrSysId});
     }
 };
 
