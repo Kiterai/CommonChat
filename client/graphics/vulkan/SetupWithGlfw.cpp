@@ -35,19 +35,15 @@ vk::UniqueSurfaceKHR createVulkanSurfaceWithGlfw(const vk::Instance instance, GL
     return vk::UniqueSurfaceKHR{c_surface, instance};
 }
 
-vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice) {
+vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, const UsingQueueSet& queueSet) {
     std::vector<const char *> exts;
     std::vector<const char *> layers;
     std::vector<vk::DeviceQueueCreateInfo> queueInfos;
 
     exts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    auto queueSet = chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties());
-    if (!queueSet)
-        throw std::exception("failed to setup vulkan queues");
-
     vk::DeviceQueueCreateInfo queueInfo;
-    queueInfo.queueFamilyIndex = queueSet->graphicsQueueFamilyIndex;
+    queueInfo.queueFamilyIndex = queueSet.graphicsQueueFamilyIndex;
     queueInfo.queueCount = 1;
     float queuePriorities[] = {1.0};
     queueInfo.pQueuePriorities = queuePriorities;

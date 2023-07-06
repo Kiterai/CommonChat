@@ -134,15 +134,18 @@ class VulkanManager : public IGraphics {
     vk::UniqueInstance instance;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
+    UsingQueueSet queueSet;
     vk::UniqueDevice device;
-    Swapchain swapchain;
+    vk::UniqueCommandPool cmdPool;
     std::vector<RenderTarget> renderTargets;
 
     VulkanManager() {}
     VulkanManager(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
                                         surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
                                         physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
-                                        device{createVulkanDeviceWithGlfw(this->physicalDevice)},
+                                        queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
+                                        device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
+                                        cmdPool{createCommandPool(device.get(), queueSet.graphicsQueueFamilyIndex)},
                                         renderTargets(createRenderTargetsWithGlfw(physicalDevice, device.get(), surface.get())) {
     }
 
