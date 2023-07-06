@@ -44,11 +44,6 @@ std::vector<vk::UniqueImageView> getImageViewsFromImages(vk::Device device, cons
     return imageViews;
 }
 
-std::vector<vk::UniqueImageView> createImageViewsFromSwapchain(vk::Device device, const Swapchain &swapchain) {
-    auto images = device.getSwapchainImagesKHR(swapchain.swapchain.get());
-    return getImageViewsFromImages(device, images, swapchain.format);
-}
-
 std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews) {
     std::vector<vk::UniqueFramebuffer> frameBufs(imageViews.size());
 
