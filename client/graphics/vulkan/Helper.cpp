@@ -18,7 +18,7 @@ std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueF
     return props;
 }
 
-std::vector<vk::UniqueImageView> getImageViewsFromImages(vk::Device device, const std::vector<vk::Image> &images, vk::Format format) {
+std::vector<vk::UniqueImageView> createImageViewsFromImages(vk::Device device, const std::vector<vk::Image> &images, vk::Format format) {
     std::vector<vk::UniqueImageView> imageViews(images.size());
 
     for (uint32_t i = 0; i < images.size(); i++) {
