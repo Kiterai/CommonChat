@@ -3,7 +3,7 @@ project(CommonChat)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/target) 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/target/debug) 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/target/release) 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/target/release)
 
 if(MSVC)
     add_compile_options("/utf-8")
@@ -20,11 +20,14 @@ find_package(uvw CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 if(USE_DESKTOP_MODE)
 find_package(glfw3 CONFIG REQUIRED)
+find_package(OpenXR CONFIG REQUIRED)
 endif()
 
 # Client
 file(GLOB_RECURSE CLI_SRC client/*.cpp)
 add_executable(CommonChat ${CLI_SRC})
+set_property(TARGET CommonChat PROPERTY CXX_STANDARD 17)
+target_compile_definitions(CommonChat PRIVATE XR_USE_GRAPHICS_API_VULKAN)
 
 target_link_libraries(CommonChat PRIVATE uvw::uvw)
 if(USE_DESKTOP_MODE)
@@ -32,6 +35,7 @@ target_link_libraries(CommonChat PRIVATE glfw)
 target_compile_definitions(CommonChat PRIVATE USE_DESKTOP_MODE)
 target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
+target_link_libraries(CommonChat PRIVATE OpenXR::headers OpenXR::openxr_loader)
 endif()
 
 add_custom_command(

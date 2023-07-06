@@ -7,7 +7,7 @@
 #include <future>
 using namespace std::string_literals;
 
-vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const Swapchain &swapchain) {
+vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const SwapchainDetails &swapchain) {
     vk::AttachmentDescription attachments[1];
     attachments[0].format = swapchain.format;
     attachments[0].samples = vk::SampleCountFlagBits::e1;
@@ -162,6 +162,8 @@ class VulkanManagerGlfw : public IGraphics {
 
     VulkanManagerCore core;
 
+    SwapchainDetails swapchain;
+
   public:
     VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
                                             surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
@@ -169,6 +171,11 @@ class VulkanManagerGlfw : public IGraphics {
                                             queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
                                             device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
                                             core{instance.get(), physicalDevice, queueSet, device.get()} {}
+
+    void buildRenderTarget() {
+        swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
+        getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
+    }
 };
 
 class VulkanManagerOpenxr : public IGraphics {

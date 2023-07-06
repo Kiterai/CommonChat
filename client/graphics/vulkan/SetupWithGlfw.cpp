@@ -143,11 +143,10 @@ SwapchainDetails createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice
 }
 
 std::vector<RenderTargetHint> getRenderTargetHintsWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, const SwapchainDetails &swapchain) {
-    std::vector<RenderTargetHint> v;
-    v.emplace_back(
-        swapchain.format,
-        swapchain.extent,
-        std::move(device.getSwapchainImagesKHR(swapchain.swapchain.get())));
+    std::vector<RenderTargetHint> v(1);
+    v[0].format = swapchain.format;
+    v[0].extent = swapchain.extent;
+    v[0].images = std::move(device.getSwapchainImagesKHR(swapchain.swapchain.get()));
     return v;
 }
 
