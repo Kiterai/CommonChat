@@ -35,7 +35,7 @@ vk::UniqueSurfaceKHR createVulkanSurfaceWithGlfw(const vk::Instance instance, GL
     return vk::UniqueSurfaceKHR{c_surface, instance};
 }
 
-vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, const UsingQueueSet& queueSet) {
+vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, const UsingQueueSet &queueSet) {
     std::vector<const char *> exts;
     std::vector<const char *> layers;
     std::vector<vk::DeviceQueueCreateInfo> queueInfos;
@@ -100,7 +100,7 @@ vk::PresentModeKHR chooseSurfacePresentMode(const std::vector<vk::PresentModeKHR
     return vk::PresentModeKHR::eFifo;
 }
 
-Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
+SwapchainDetails createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
     vk::SurfaceCapabilitiesKHR surfaceCapabilities = physicalDevice.getSurfaceCapabilitiesKHR(surface);
     std::vector<vk::SurfaceFormatKHR> surfaceFormats = physicalDevice.getSurfaceFormatsKHR(surface);
     std::vector<vk::PresentModeKHR> surfacePresentModes = physicalDevice.getSurfacePresentModesKHR(surface);
@@ -116,7 +116,7 @@ Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::D
     }
 #endif
 
-    Swapchain swapchain;
+    SwapchainDetails swapchain;
 
     vk::SurfaceFormatKHR swapchainFormat = chooseSurfaceFormat(surfaceFormats);
     vk::PresentModeKHR swapchainPresentMode = chooseSurfacePresentMode(surfacePresentModes);
@@ -142,12 +142,12 @@ Swapchain createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice, vk::D
     return swapchain;
 }
 
-std::vector<RenderTarget> createRenderTargetsWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, vk::SurfaceKHR surface) {
-    auto swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device, surface);
-    auto imgViews = createImageViewsFromSwapchain(device, swapchain);
-
-    std::vector<RenderTarget> v;
-    v.emplace_back(RenderTarget{std::move(swapchain), std::move(imgViews)});
+std::vector<RenderTargetHint> getRenderTargetHintsWithGlfw(vk::PhysicalDevice physicalDevice, vk::Device device, const SwapchainDetails &swapchain) {
+    std::vector<RenderTargetHint> v;
+    v.emplace_back(
+        swapchain.format,
+        swapchain.extent,
+        std::move(device.getSwapchainImagesKHR(swapchain.swapchain.get())));
     return v;
 }
 

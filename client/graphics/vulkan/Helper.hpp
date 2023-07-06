@@ -9,14 +9,19 @@ struct UsingQueueSet {
     uint32_t graphicsQueueFamilyIndex;
 };
 
-struct Swapchain {
+struct SwapchainDetails {
     vk::Format format;
     vk::Extent2D extent;
     vk::UniqueSwapchainKHR swapchain;
 };
 
+struct RenderTargetHint {
+    vk::Format format;
+    vk::Extent2D extent;
+    std::vector<vk::Image> images;
+};
+
 struct RenderTarget {
-    Swapchain swapchain;
     std::vector<vk::UniqueImageView> imageViews;
     std::vector<vk::UniqueFramebuffer> frameBufs;
 };
