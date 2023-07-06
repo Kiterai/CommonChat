@@ -1,5 +1,4 @@
 #include "SetupWithOpenxr.hpp"
-#include "Helper.hpp"
 using namespace std::literals::string_literals;
 
 vk::Instance createVulkanInstanceWithOpenxr(xr::Instance xrInstance, xr::SystemId xrSystemId) {
@@ -112,4 +111,17 @@ std::vector<vk::Image> getImagesFromXrSwapchain(xr::Swapchain swapchain) {
                    [](xr::SwapchainImageVulkanKHR image) { return vk::Image(image.image); });
 
     return vkImages;
+}
+
+std::vector<RenderTargetHint> getRenderTargetHintsWithOpenxr(const std::vector<OpenxrSwapchainDetails> &swapchains) {
+    std::vector<RenderTargetHint> v;
+    std::transform(swapchains.begin(), swapchains.end(), std::back_inserter(v),
+                   [](const OpenxrSwapchainDetails &swapchain) {
+                       RenderTargetHint hint;
+                       hint.format = vk::Format(swapchain.format);
+                       hint.extent = vk::Extent2D(swapchain.extent.width, swapchain.extent.height);
+                       hint.images = getImagesFromXrSwapchain(swapchain.swapchain);
+                       return hint;
+                   });
+    return v;
 }
