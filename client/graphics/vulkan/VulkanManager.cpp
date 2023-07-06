@@ -3,6 +3,7 @@
 #ifdef USE_DESKTOP_MODE
 #include "SetupWithGlfw.hpp"
 #endif
+#include "SetupWithOpenxr.hpp"
 #include <future>
 using namespace std::string_literals;
 
@@ -130,41 +131,66 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
-class VulkanManager : public IGraphics {
+class VulkanManagerCore {
+    vk::Instance instance;
+    vk::PhysicalDevice physicalDevice;
+    UsingQueueSet queueSet;
+    vk::Device device;
+    vk::UniqueCommandPool cmdPool;
+    std::vector<RenderTarget> renderTargets;
+
+  public:
+    VulkanManagerCore(
+        vk::Instance instance,
+        vk::PhysicalDevice physicalDevice,
+        const UsingQueueSet &queueSet,
+        vk::Device device)
+        : instance{instance},
+          physicalDevice{physicalDevice},
+          queueSet{queueSet},
+          device{device},
+          cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)} {
+    }
+};
+
+class VulkanManagerGlfw : public IGraphics {
     vk::UniqueInstance instance;
     vk::UniqueSurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     UsingQueueSet queueSet;
     vk::UniqueDevice device;
-    vk::UniqueCommandPool cmdPool;
-    std::vector<RenderTarget> renderTargets;
 
-    VulkanManager() {}
-    VulkanManager(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
-                                        surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
-                                        physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
-                                        queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
-                                        device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
-                                        cmdPool{createCommandPool(device.get(), queueSet.graphicsQueueFamilyIndex)},
-                                        renderTargets(createRenderTargetsWithGlfw(physicalDevice, device.get(), surface.get())) {
-    }
-
-    VulkanManager(xr::Instance xrInst, xr::SystemId xrSysId) {
-    }
+    VulkanManagerCore core;
 
   public:
-    static pIGraphics makeFromDesktopGui(GLFWwindow *window) {
-        return pIGraphics(new VulkanManager{window});
-    }
-    static pIGraphics makeFromXr(xr::Instance xrInst, xr::SystemId xrSysId) {
-        return pIGraphics(new VulkanManager{xrInst, xrSysId});
-    }
+    VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
+                                            surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
+                                            physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
+                                            queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
+                                            device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
+                                            core{instance.get(), physicalDevice, queueSet, device.get()} {}
+};
+
+class VulkanManagerOpenxr : public IGraphics {
+    vk::Instance vkInst;
+    vk::PhysicalDevice vkPhysDevice;
+    UsingQueueSet vkQueueSet;
+    vk::Device vkDevice;
+
+    VulkanManagerCore core;
+
+  public:
+    VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId)
+        : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
+          vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},
+          vkQueueSet{chooseSuitableQueueSet(vkPhysDevice.getQueueFamilyProperties()).value()},
+          core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
 };
 
 pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {
-    return VulkanManager::makeFromDesktopGui(window);
+    return pIGraphics{new VulkanManagerGlfw{window}};
 }
 
 pIGraphics makeFromXr_Vulkan(xr::Instance xrInst, xr::SystemId xrSysId) {
-    return VulkanManager::makeFromXr(xrInst, xrSysId);
+    return pIGraphics{new VulkanManagerOpenxr{xrInst, xrSysId}};
 }
