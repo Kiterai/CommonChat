@@ -131,6 +131,15 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
+RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint) {
+    RenderTarget rt;
+
+    rt.imageViews = createImageViewsFromImages(device, hint.images, hint.format);
+    rt.frameBufs = createFrameBufsFromImageView(device, {}, hint.extent, {std::ref(rt.imageViews)});
+
+    return rt;
+}
+
 class VulkanManagerCore {
     vk::Instance instance;
     vk::PhysicalDevice physicalDevice;
@@ -150,6 +159,14 @@ class VulkanManagerCore {
           queueSet{queueSet},
           device{device},
           cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)} {
+    }
+
+    void recreateRenderTarget(std::vector<RenderTargetHint> hints) {
+        renderTargets.clear();
+        std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
+                       [this](RenderTargetHint hint) {
+                           return createRenderTargetFromHint(device, hint);
+                       });
     }
 };
 
@@ -174,7 +191,8 @@ class VulkanManagerGlfw : public IGraphics {
 
     void buildRenderTarget() {
         swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
-        getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
+        auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
+        core.recreateRenderTarget(hints);
     }
 };
 
@@ -192,6 +210,11 @@ class VulkanManagerOpenxr : public IGraphics {
           vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},
           vkQueueSet{chooseSuitableQueueSet(vkPhysDevice.getQueueFamilyProperties()).value()},
           core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
+
+    void buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains) {
+        auto hints = getRenderTargetHintsWithOpenxr(swapchains);
+        core.recreateRenderTarget(hints);
+    }
 };
 
 pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {
