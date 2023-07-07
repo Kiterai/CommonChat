@@ -232,8 +232,4 @@ void VulkanManagerGlfw::render() {
     present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value, {});
 }
 
-pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {
-    return pIGraphics{new VulkanManagerGlfw{window}};
-}
-
 #endif

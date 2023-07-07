@@ -27,6 +27,4 @@ class VulkanManagerGlfw : public IGraphics {
     void render();
 };
 
-pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window);
-
 #endif

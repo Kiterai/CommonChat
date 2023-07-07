@@ -136,7 +136,3 @@ void VulkanManagerOpenxr::buildRenderTarget(std::vector<OpenxrSwapchainDetails> 
     auto hints = getRenderTargetHintsWithOpenxr(swapchains);
     core.recreateRenderTarget(hints);
 }
-
-pIGraphics makeFromXr_Vulkan(xr::Instance xrInst, xr::SystemId xrSysId) {
-    return pIGraphics{new VulkanManagerOpenxr{xrInst, xrSysId}};
-}
