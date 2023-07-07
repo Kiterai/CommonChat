@@ -3,9 +3,9 @@
 #include <future>
 using namespace std::string_literals;
 
-vk::UniqueRenderPass createRenderPassFromSwapchain(vk::Device device, const SwapchainDetails &swapchain) {
+vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
-    attachments[0].format = swapchain.format;
+    attachments[0].format = renderTargetFormat;
     attachments[0].samples = vk::SampleCountFlagBits::e1;
     attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
     attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
@@ -127,11 +127,13 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
-RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint) {
+RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint, vk::PipelineLayout pipelinelayout) {
     RenderTarget rt;
 
     rt.imageViews = createImageViewsFromImages(device, hint.images, hint.format);
-    rt.frameBufs = createFrameBufsFromImageView(device, {}, hint.extent, {std::ref(rt.imageViews)});
+    rt.renderpass = createRenderPass(device, hint.format);
+    rt.frameBufs = createFrameBufsFromImageView(device, rt.renderpass.get(), hint.extent, {std::ref(rt.imageViews)});
+    rt.pipeline = createPipeline(device, hint.extent, rt.renderpass.get(), pipelinelayout);
 
     return rt;
 }
@@ -145,13 +147,14 @@ VulkanManagerCore::VulkanManagerCore(
       physicalDevice{physicalDevice},
       queueSet{queueSet},
       device{device},
-      cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)} {
+      cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
+      pipelinelayout{createPipelineLayout(device)} {
 }
 
 void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
     renderTargets.clear();
     std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
                    [this](RenderTargetHint hint) {
-                       return createRenderTargetFromHint(device, hint);
+                       return createRenderTargetFromHint(device, hint, pipelinelayout.get());
                    });
 }

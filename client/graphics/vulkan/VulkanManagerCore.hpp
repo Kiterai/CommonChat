@@ -7,6 +7,7 @@ class VulkanManagerCore {
     UsingQueueSet queueSet;
     vk::Device device;
     vk::UniqueCommandPool cmdPool;
+    vk::UniquePipelineLayout pipelinelayout;
     std::vector<RenderTarget> renderTargets;
 
   public:
