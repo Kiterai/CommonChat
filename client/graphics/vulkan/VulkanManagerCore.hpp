@@ -21,5 +21,9 @@ class VulkanManagerCore {
 
     void recreateRenderTarget(std::vector<RenderTargetHint> hints);
 
-    void render(uint32_t targetIndex, uint32_t imageIndex);
+    void render(uint32_t targetIndex, uint32_t imageIndex,
+                std::initializer_list<vk::Semaphore> waitSemaphores,
+                std::initializer_list<vk::PipelineStageFlags> waitStages,
+                std::initializer_list<vk::Semaphore> signalSemaphores,
+                vk::Fence fence);
 };

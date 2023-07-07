@@ -162,7 +162,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    });
 }
 
-void recordRenderCommand(vk::CommandBuffer cmdBuf, vk::Queue queue, const RenderTarget &rt, uint32_t index) {
+void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index) {
     CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
@@ -186,9 +186,25 @@ void recordRenderCommand(vk::CommandBuffer cmdBuf, vk::Queue queue, const Render
     cmdBuf.endRenderPass();
 }
 
-void VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex) {
-    recordRenderCommand(cmdBuf.get(), graphicsQueue, renderTargets[targetIndex], imageIndex);
+void VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
+                               std::initializer_list<vk::Semaphore> waitSemaphores,
+                               std::initializer_list<vk::PipelineStageFlags> waitStages,
+                               std::initializer_list<vk::Semaphore> signalSemaphores,
+                               vk::Fence fence) {
+    recordRenderCommand(cmdBuf.get(), renderTargets[targetIndex], imageIndex);
 
-    // TODO: Semaphore
-    Submit({cmdBuf.get()}, graphicsQueue);
+    auto cmdBufs = {cmdBuf.get()};
+
+    vk::SubmitInfo submitInfo;
+    submitInfo.commandBufferCount = cmdBufs.size();
+    submitInfo.pCommandBuffers = cmdBufs.begin();
+
+    submitInfo.waitSemaphoreCount = waitSemaphores.size();
+    submitInfo.pWaitSemaphores = waitSemaphores.begin();
+    submitInfo.pWaitDstStageMask = waitStages.begin();
+
+    submitInfo.signalSemaphoreCount = signalSemaphores.size();
+    submitInfo.pSignalSemaphores = signalSemaphores.begin();
+
+    graphicsQueue.submit({submitInfo}, fence);
 }

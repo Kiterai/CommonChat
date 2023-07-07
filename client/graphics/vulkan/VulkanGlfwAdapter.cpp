@@ -218,16 +218,27 @@ void VulkanManagerGlfw::buildRenderTarget() {
     swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
     auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
     core.recreateRenderTarget(hints);
+
+    auto imageNum = hints[0].images.size();
+
+    vk::SemaphoreCreateInfo semaphoreCreateInfo;
+    imageAcquiredSemaphores.clear();
+    for (uint32_t i = 0; i < imageNum; i++)
+        imageAcquiredSemaphores[i] = device->createSemaphoreUnique(semaphoreCreateInfo);
 }
 
 void VulkanManagerGlfw::render() {
-    vk::ResultValue acquireImgResult = device->acquireNextImageKHR(swapchain.swapchain.get(), 1'000'000'000);
+    vk::ResultValue acquireImgResult = device->acquireNextImageKHR(swapchain.swapchain.get(), 1'000'000'000, imageAcquiredSemaphores[flightFrameIndex].get());
     if (acquireImgResult.result != vk::Result::eSuccess)
         throw std::runtime_error("failed to acquire image");
 
-    // TODO:Fence
+    flightFrameIndex++;
+    if (flightFrameIndex >= flightFramesNum)
+        flightFrameIndex = 0;
 
-    core.render(0, acquireImgResult.value);
+        // TODO:Semaphore
+
+    core.render(0, acquireImgResult.value, {}, {}, {}, {});
 
     present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value, {});
 }
