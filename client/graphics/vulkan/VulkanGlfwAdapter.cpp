@@ -12,12 +12,47 @@
 vk::UniqueInstance createVulkanInstanceWithGlfw() {
     std::vector<const char *> exts, layers;
 
+    const auto availableExts = vk::enumerateInstanceExtensionProperties();
+    const auto availableLayers = vk::enumerateInstanceLayerProperties();
+
+    auto checkExtAvailable = [&availableExts](const char *extName) {
+        return std::find_if(availableExts.begin(), availableExts.end(),
+                            [&](vk::ExtensionProperties prop) {
+                                return std::string_view(prop.extensionName.data()) == extName;
+                            }) != availableExts.end();
+    };
+    auto checkLayerAvailable = [&availableLayers](const char *layerName) {
+        return std::find_if(availableLayers.begin(), availableLayers.end(),
+                            [&](vk::LayerProperties prop) {
+                                return std::string_view(prop.layerName.data()) == layerName;
+                            }) != availableLayers.end();
+    };
+
+#ifdef _DEBUG
+    std::clog << "Available Extensions:" << std::endl;
+    for (const auto &ext : availableExts) {
+        std::clog << "  " << ext.extensionName
+                  << " (version: "
+                  << ext.specVersion
+                  << ")" << std::endl;
+    }
+    std::clog << "Available Layers:" << std::endl;
+    for (const auto &layer : availableLayers) {
+        std::clog << "  " << layer.layerName
+                  << " (spec version: " << VK_VERSION_MAJOR(layer.specVersion) << "." << VK_VERSION_MINOR(layer.specVersion) << "." << VK_VERSION_PATCH(layer.specVersion)
+                  << ", impl version: " << layer.implementationVersion
+                  << ") : " << layer.description.data() << std::endl;
+    }
+#endif
+
     {
         uint32_t glfwExtCnt;
         auto glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCnt);
         if (!glfwExts)
             __GLFW_TERMINATE_ERROR_THROW
         for (uint32_t i = 0; i < glfwExtCnt; i++) {
+            if (!checkExtAvailable(glfwExts[i]))
+                throw std::runtime_error(std::string("Extension not supported: ") + glfwExts[i]);
             exts.push_back(glfwExts[i]);
         }
     }
