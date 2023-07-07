@@ -13,6 +13,7 @@ class VulkanManagerGlfw : public IGraphics {
     vk::PhysicalDevice physicalDevice;
     UsingQueueSet queueSet;
     vk::UniqueDevice device;
+    vk::Queue presentQueue;
 
     VulkanManagerCore core;
 
@@ -22,6 +23,8 @@ class VulkanManagerGlfw : public IGraphics {
     VulkanManagerGlfw(GLFWwindow *window);
 
     void buildRenderTarget();
+
+    void render();
 };
 
 pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window);

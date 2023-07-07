@@ -191,17 +191,45 @@ std::vector<RenderTargetHint> getRenderTargetHintsWithGlfw(vk::PhysicalDevice ph
     return v;
 }
 
+void present(vk::Queue queue, vk::SwapchainKHR swapchain, uint32_t index, std::initializer_list<vk::Semaphore> waitSemaphores) {
+    auto presentSwapchains = {swapchain};
+    auto imgIndices = {index};
+
+    vk::PresentInfoKHR presentInfo;
+    presentInfo.swapchainCount = presentSwapchains.size();
+    presentInfo.pSwapchains = presentSwapchains.begin();
+    presentInfo.pImageIndices = imgIndices.begin();
+
+    presentInfo.waitSemaphoreCount = waitSemaphores.size();
+    presentInfo.pWaitSemaphores = waitSemaphores.begin();
+
+    queue.presentKHR(presentInfo);
+}
+
 VulkanManagerGlfw::VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
                                                            surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
                                                            physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
                                                            queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
                                                            device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
+                                                           presentQueue{this->device->getQueue(queueSet.graphicsQueueFamilyIndex, 0)},
                                                            core{instance.get(), physicalDevice, queueSet, device.get()} {}
 
 void VulkanManagerGlfw::buildRenderTarget() {
     swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
     auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
     core.recreateRenderTarget(hints);
+}
+
+void VulkanManagerGlfw::render() {
+    vk::ResultValue acquireImgResult = device->acquireNextImageKHR(swapchain.swapchain.get(), 1'000'000'000);
+    if (acquireImgResult.result != vk::Result::eSuccess)
+        throw std::runtime_error("failed to acquire image");
+
+    // TODO:Fence
+
+    core.render(0, acquireImgResult.value);
+
+    present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value, {});
 }
 
 pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {

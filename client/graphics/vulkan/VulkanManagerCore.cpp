@@ -162,8 +162,8 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    });
 }
 
-void render(vk::CommandBuffer cmdBuf, vk::Queue queue, const RenderTarget &rt, uint32_t index) {
-    CommandExec cmd{cmdBuf, queue};
+void recordRenderCommand(vk::CommandBuffer cmdBuf, vk::Queue queue, const RenderTarget &rt, uint32_t index) {
+    CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
     clearVal[0].color.float32[0] = 0.0f;
@@ -184,4 +184,11 @@ void render(vk::CommandBuffer cmdBuf, vk::Queue queue, const RenderTarget &rt, u
     cmdBuf.draw(3, 1, 0, 0);
 
     cmdBuf.endRenderPass();
+}
+
+void VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex) {
+    recordRenderCommand(cmdBuf.get(), graphicsQueue, renderTargets[targetIndex], imageIndex);
+
+    // TODO: Semaphore
+    Submit({cmdBuf.get()}, graphicsQueue);
 }

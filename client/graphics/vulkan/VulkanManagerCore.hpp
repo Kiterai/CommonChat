@@ -20,4 +20,6 @@ class VulkanManagerCore {
         vk::Device device);
 
     void recreateRenderTarget(std::vector<RenderTargetHint> hints);
+
+    void render(uint32_t targetIndex, uint32_t imageIndex);
 };
