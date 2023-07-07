@@ -2,7 +2,6 @@
 
 #include "DesktopGui.hpp"
 #include "GLFWHelper.hpp"
-#include "../graphics/vulkan/VulkanGlfwAdapter.hpp"
 
 DesktopGuiSystem::DesktopGuiSystem() {
     if (!glfwInit())
@@ -14,7 +13,8 @@ DesktopGuiSystem::DesktopGuiSystem() {
     if (!window)
         __GLFW_ERROR_THROW
 
-    g = makeFromDesktopGui_Vulkan(window);
+    graphicManager = std::make_unique<VulkanManagerGlfw>(window);
+    graphicManager->buildRenderTarget();
 }
 
 DesktopGuiSystem::~DesktopGuiSystem() {
