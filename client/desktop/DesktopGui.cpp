@@ -24,6 +24,8 @@ DesktopGuiSystem::~DesktopGuiSystem() {
 void DesktopGuiSystem::mainLoop() {
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        graphicManager->render();
     }
 }
 

@@ -19,8 +19,10 @@ class VulkanManagerGlfw : public IGraphics {
 
     SwapchainDetails swapchain;
 
-    uint32_t flightFramesNum = 2, flightFrameIndex = 0;
+    uint32_t flightFramesNum, flightFrameIndex = 0;
     std::vector<vk::UniqueSemaphore> imageAcquiredSemaphores;
+    std::vector<vk::UniqueSemaphore> imageRenderedSemaphores;
+    std::vector<vk::UniqueFence> imageReadyToUseFence;
 
   public:
     VulkanManagerGlfw(GLFWwindow *window);
