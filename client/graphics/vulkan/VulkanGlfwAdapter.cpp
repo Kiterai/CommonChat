@@ -1,6 +1,6 @@
 #ifdef USE_DESKTOP_MODE
 
-#include "SetupWithGlfw.hpp"
+#include "VulkanGlfwAdapter.hpp""
 #include "../../desktop/GLFWHelper.hpp"
 #include "Helper.hpp"
 

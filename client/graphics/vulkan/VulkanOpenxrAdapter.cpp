@@ -1,4 +1,4 @@
-#include "SetupWithOpenxr.hpp"
+#include "VulkanOpenxrAdapter.hpp"
 using namespace std::literals::string_literals;
 
 vk::Instance createVulkanInstanceWithOpenxr(xr::Instance xrInstance, xr::SystemId xrSystemId) {

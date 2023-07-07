@@ -2,7 +2,7 @@
 
 #include "DesktopGui.hpp"
 #include "GLFWHelper.hpp"
-#include "../graphics/vulkan/SetupWithGlfw.hpp"
+#include "../graphics/vulkan/VulkanGlfwAdapter.hpp"
 
 DesktopGuiSystem::DesktopGuiSystem() {
     if (!glfwInit())

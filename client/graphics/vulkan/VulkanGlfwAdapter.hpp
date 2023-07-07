@@ -2,7 +2,7 @@
 
 #include "../IGraphics.hpp"
 #include "Helper.hpp"
-#include "VulkanManager.hpp"
+#include "VulkanManagerCore.hpp"
 #include <GLFW/glfw3.h>
 #include <vector>
 #include <vulkan/vulkan.hpp>

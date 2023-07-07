@@ -1,6 +1,6 @@
 #include "../IGraphics.hpp"
 #include "Helper.hpp"
-#include "VulkanManager.hpp"
+#include "VulkanManagerCore.hpp"
 #include <vulkan/vulkan.hpp>
 #include <openxr/openxr_platform.h>
 #include <openxr/openxr.hpp>
