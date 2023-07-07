@@ -25,6 +25,7 @@ struct RenderTarget {
     vk::UniqueRenderPass renderpass;
     vk::UniquePipeline pipeline;
 
+    vk::Extent2D extent;
     std::vector<vk::UniqueImageView> imageViews;
     std::vector<vk::UniqueFramebuffer> frameBufs;
 };

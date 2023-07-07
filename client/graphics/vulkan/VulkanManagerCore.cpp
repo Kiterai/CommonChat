@@ -130,6 +130,7 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
 RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint, vk::PipelineLayout pipelinelayout) {
     RenderTarget rt;
 
+    rt.extent = hint.extent;
     rt.imageViews = createImageViewsFromImages(device, hint.images, hint.format);
     rt.renderpass = createRenderPass(device, hint.format);
     rt.frameBufs = createFrameBufsFromImageView(device, rt.renderpass.get(), hint.extent, {std::ref(rt.imageViews)});
@@ -158,4 +159,28 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    [this](RenderTargetHint hint) {
                        return createRenderTargetFromHint(device, hint, pipelinelayout.get());
                    });
+}
+
+void render(vk::CommandBuffer cmdBuf, vk::Queue queue, const RenderTarget &rt, uint32_t index) {
+    CommandExec cmd{cmdBuf, queue};
+
+    vk::ClearValue clearVal[1];
+    clearVal[0].color.float32[0] = 0.0f;
+    clearVal[0].color.float32[1] = 0.0f;
+    clearVal[0].color.float32[2] = 0.0f;
+    clearVal[0].color.float32[3] = 1.0f;
+
+    vk::RenderPassBeginInfo rpBeginInfo;
+    rpBeginInfo.renderPass = rt.renderpass.get();
+    rpBeginInfo.framebuffer = rt.frameBufs[index].get();
+    rpBeginInfo.renderArea = vk::Rect2D{{0, 0}, rt.extent};
+    rpBeginInfo.clearValueCount = 1;
+    rpBeginInfo.pClearValues = clearVal;
+
+    cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
+    cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
+
+    cmdBuf.draw(3, 1, 0, 0);
+
+    cmdBuf.endRenderPass();
 }
