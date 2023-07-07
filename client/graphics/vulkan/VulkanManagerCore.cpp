@@ -148,6 +148,7 @@ VulkanManagerCore::VulkanManagerCore(
       queueSet{queueSet},
       device{device},
       cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
+      cmdBuf{createCommandBuffer(device, cmdPool.get())},
       pipelinelayout{createPipelineLayout(device)} {
 }
 
