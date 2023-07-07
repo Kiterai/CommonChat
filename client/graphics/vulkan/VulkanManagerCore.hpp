@@ -6,6 +6,7 @@ class VulkanManagerCore {
     vk::PhysicalDevice physicalDevice;
     UsingQueueSet queueSet;
     vk::Device device;
+    vk::Queue graphicsQueue;
     vk::UniqueCommandPool cmdPool;
     vk::UniqueCommandBuffer cmdBuf;
     vk::UniquePipelineLayout pipelinelayout;
