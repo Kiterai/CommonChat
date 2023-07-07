@@ -43,6 +43,12 @@ vk::UniqueInstance createVulkanInstanceWithGlfw() {
                   << ", impl version: " << layer.implementationVersion
                   << ") : " << layer.description.data() << std::endl;
     }
+    if (checkLayerAvailable("VK_LAYER_KHRONOS_validation")) {
+        std::clog << "Validation Layer: on" << std::endl;
+        layers.push_back("VK_LAYER_KHRONOS_validation");
+    } else {
+        std::clog << "Validation Layer: unavailable" << std::endl;
+    }
 #endif
 
     {
