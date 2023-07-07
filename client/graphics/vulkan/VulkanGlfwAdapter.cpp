@@ -162,7 +162,7 @@ SwapchainDetails createVulkanSwapchainWithGlfw(vk::PhysicalDevice physicalDevice
     vk::SurfaceFormatKHR swapchainFormat = chooseSurfaceFormat(surfaceFormats);
     vk::PresentModeKHR swapchainPresentMode = chooseSurfacePresentMode(surfacePresentModes);
 
-    swapchain.format = swapchain.format;
+    swapchain.format = swapchainFormat.format;
     swapchain.extent = surfaceCapabilities.currentExtent;
 
     vk::SwapchainCreateInfoKHR swapchainCreateInfo;
