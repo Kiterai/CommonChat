@@ -98,13 +98,19 @@ vk::UniqueCommandPool createCommandPool(vk::Device device, uint32_t queueFamilyI
     return device.createCommandPoolUnique(poolCreateInfo);
 }
 
-vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool) {
+std::vector<vk::UniqueCommandBuffer> createCommandBuffers(vk::Device device, vk::CommandPool pool, uint32_t n) {
     vk::CommandBufferAllocateInfo allocInfo;
     allocInfo.commandPool = pool;
     allocInfo.level = vk::CommandBufferLevel::ePrimary;
-    allocInfo.commandBufferCount = 1;
+    allocInfo.commandBufferCount = n;
 
-    return std::move(device.allocateCommandBuffersUnique(allocInfo)[0]);
+    return device.allocateCommandBuffersUnique(allocInfo);
+}
+
+vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool) {
+    auto bufs = createCommandBuffers(device, pool, 1);
+
+    return std::move(bufs[0]);
 }
 
 void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence) {

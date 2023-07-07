@@ -38,6 +38,7 @@ vk::UniqueShaderModule createShaderModuleFromBinary(vk::Device device, const std
 vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::filesystem::path &path);
 
 vk::UniqueCommandPool createCommandPool(vk::Device device, uint32_t queueFamilyIndex);
+std::vector<vk::UniqueCommandBuffer> createCommandBuffers(vk::Device device, vk::CommandPool pool, uint32_t n);
 vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool);
 void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence = {});
 
