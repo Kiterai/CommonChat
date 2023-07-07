@@ -150,4 +150,21 @@ std::vector<RenderTargetHint> getRenderTargetHintsWithGlfw(vk::PhysicalDevice ph
     return v;
 }
 
+VulkanManagerGlfw::VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
+                                                           surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
+                                                           physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
+                                                           queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
+                                                           device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
+                                                           core{instance.get(), physicalDevice, queueSet, device.get()} {}
+
+void VulkanManagerGlfw::buildRenderTarget() {
+    swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
+    auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
+    core.recreateRenderTarget(hints);
+}
+
+pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {
+    return pIGraphics{new VulkanManagerGlfw{window}};
+}
+
 #endif

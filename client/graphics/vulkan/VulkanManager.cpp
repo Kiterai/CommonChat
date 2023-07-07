@@ -1,9 +1,5 @@
 #include "VulkanManager.hpp"
 #include "Helper.hpp"
-#ifdef USE_DESKTOP_MODE
-#include "SetupWithGlfw.hpp"
-#endif
-#include "SetupWithOpenxr.hpp"
 #include <future>
 using namespace std::string_literals;
 
@@ -140,87 +136,22 @@ RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHin
     return rt;
 }
 
-class VulkanManagerCore {
-    vk::Instance instance;
-    vk::PhysicalDevice physicalDevice;
-    UsingQueueSet queueSet;
-    vk::Device device;
-    vk::UniqueCommandPool cmdPool;
-    std::vector<RenderTarget> renderTargets;
-
-  public:
-    VulkanManagerCore(
-        vk::Instance instance,
-        vk::PhysicalDevice physicalDevice,
-        const UsingQueueSet &queueSet,
-        vk::Device device)
-        : instance{instance},
-          physicalDevice{physicalDevice},
-          queueSet{queueSet},
-          device{device},
-          cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)} {
-    }
-
-    void recreateRenderTarget(std::vector<RenderTargetHint> hints) {
-        renderTargets.clear();
-        std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
-                       [this](RenderTargetHint hint) {
-                           return createRenderTargetFromHint(device, hint);
-                       });
-    }
-};
-
-class VulkanManagerGlfw : public IGraphics {
-    vk::UniqueInstance instance;
-    vk::UniqueSurfaceKHR surface;
-    vk::PhysicalDevice physicalDevice;
-    UsingQueueSet queueSet;
-    vk::UniqueDevice device;
-
-    VulkanManagerCore core;
-
-    SwapchainDetails swapchain;
-
-  public:
-    VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkanInstanceWithGlfw()},
-                                            surface{createVulkanSurfaceWithGlfw(this->instance.get(), window)},
-                                            physicalDevice{chooseSuitablePhysicalDeviceWithGlfw(this->instance.get(), this->surface.get())},
-                                            queueSet{chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties()).value()},
-                                            device{createVulkanDeviceWithGlfw(this->physicalDevice, queueSet)},
-                                            core{instance.get(), physicalDevice, queueSet, device.get()} {}
-
-    void buildRenderTarget() {
-        swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
-        auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);
-        core.recreateRenderTarget(hints);
-    }
-};
-
-class VulkanManagerOpenxr : public IGraphics {
-    vk::Instance vkInst;
-    vk::PhysicalDevice vkPhysDevice;
-    UsingQueueSet vkQueueSet;
-    vk::Device vkDevice;
-
-    VulkanManagerCore core;
-
-  public:
-    VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId)
-        : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
-          vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},
-          vkQueueSet{chooseSuitableQueueSet(vkPhysDevice.getQueueFamilyProperties()).value()},
-          core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
-
-    void buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains) {
-        auto hints = getRenderTargetHintsWithOpenxr(swapchains);
-        core.recreateRenderTarget(hints);
-    }
-};
-
-pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow *window) {
-    return pIGraphics{new VulkanManagerGlfw{window}};
+VulkanManagerCore::VulkanManagerCore(
+    vk::Instance instance,
+    vk::PhysicalDevice physicalDevice,
+    const UsingQueueSet &queueSet,
+    vk::Device device)
+    : instance{instance},
+      physicalDevice{physicalDevice},
+      queueSet{queueSet},
+      device{device},
+      cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)} {
 }
 
-pIGraphics makeFromXr_Vulkan(xr::Instance xrInst, xr::SystemId xrSysId) {
-    return pIGraphics{new VulkanManagerOpenxr{xrInst, xrSysId}};
+void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
+    renderTargets.clear();
+    std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
+                   [this](RenderTargetHint hint) {
+                       return createRenderTargetFromHint(device, hint);
+                   });
 }

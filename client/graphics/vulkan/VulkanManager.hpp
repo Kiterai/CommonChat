@@ -1,13 +1,20 @@
-#include "../IGraphics.hpp"
+#include "Helper.hpp"
 #include <vulkan/vulkan.hpp>
-#ifdef USE_DESKTOP_MODE
-#include <GLFW/glfw3.h>
-#endif
-#include <openxr/openxr_platform.h>
-#include <openxr/openxr.hpp>
 
-#ifdef USE_DESKTOP_MODE
-pIGraphics makeFromDesktopGui_Vulkan(GLFWwindow* window);
-#endif
-pIGraphics makeFromXr_Vulkan(xr::Instance xrInst, xr::SystemId xrSysId);
+class VulkanManagerCore {
+    vk::Instance instance;
+    vk::PhysicalDevice physicalDevice;
+    UsingQueueSet queueSet;
+    vk::Device device;
+    vk::UniqueCommandPool cmdPool;
+    std::vector<RenderTarget> renderTargets;
 
+  public:
+    VulkanManagerCore(
+        vk::Instance instance,
+        vk::PhysicalDevice physicalDevice,
+        const UsingQueueSet &queueSet,
+        vk::Device device);
+
+    void recreateRenderTarget(std::vector<RenderTargetHint> hints);
+};

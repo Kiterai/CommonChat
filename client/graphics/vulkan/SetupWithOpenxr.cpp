@@ -125,3 +125,18 @@ std::vector<RenderTargetHint> getRenderTargetHintsWithOpenxr(const std::vector<O
                    });
     return v;
 }
+
+VulkanManagerOpenxr::VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId)
+    : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
+      vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},
+      vkQueueSet{chooseSuitableQueueSet(vkPhysDevice.getQueueFamilyProperties()).value()},
+      core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
+
+void VulkanManagerOpenxr::buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains) {
+    auto hints = getRenderTargetHintsWithOpenxr(swapchains);
+    core.recreateRenderTarget(hints);
+}
+
+pIGraphics makeFromXr_Vulkan(xr::Instance xrInst, xr::SystemId xrSysId) {
+    return pIGraphics{new VulkanManagerOpenxr{xrInst, xrSysId}};
+}
