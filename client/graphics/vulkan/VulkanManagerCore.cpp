@@ -182,10 +182,9 @@ void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint3
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    // cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
+    cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
 
-    // cmdBuf.draw(3, 1, 0, 0);
-
+    cmdBuf.draw(3, 1, 0, 0);
     cmdBuf.endRenderPass();
 }
 

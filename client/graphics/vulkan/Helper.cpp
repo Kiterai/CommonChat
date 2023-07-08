@@ -45,11 +45,19 @@ std::vector<vk::UniqueImageView> createImageViewsFromImages(vk::Device device, c
 }
 
 std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews) {
-    std::vector<vk::UniqueFramebuffer> frameBufs(imageViews.size());
+    const auto frameBufNum = imageViews[0].get().size();
+    const auto frameBufImagesNum = imageViews.size();
+#ifdef _DEBUG
+    for (const auto &attachmentImageViews : imageViews)
+        if (attachmentImageViews.get().size() != frameBufNum)
+            throw std::runtime_error("number of imageview differs in createFrameBufsFromImageView()");
+#endif
 
-    for (uint32_t i = 0; i < imageViews.size(); i++) {
+    std::vector<vk::UniqueFramebuffer> frameBufs(frameBufNum);
+
+    for (uint32_t i = 0; i < frameBufNum; i++) {
         std::vector<vk::ImageView> frameBufAttachments(imageViews.size());
-        for (uint32_t j = 0; j < imageViews.size(); j++) {
+        for (uint32_t j = 0; j < frameBufImagesNum; j++) {
             frameBufAttachments[j] = imageViews[j].get()[i].get();
         }
 

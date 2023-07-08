@@ -252,9 +252,6 @@ void VulkanManagerGlfw::render() {
     present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value,
             {imageRenderedSemaphores[flightFrameIndex].get()});
 
-    // present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value,
-    //         {imageAcquiredSemaphores[flightFrameIndex].get()});
-
     flightFrameIndex++;
     if (flightFrameIndex >= flightFramesNum)
         flightFrameIndex = 0;
