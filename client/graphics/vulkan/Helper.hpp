@@ -40,12 +40,14 @@ vk::UniqueShaderModule createShaderModuleFromFile(vk::Device device, const std::
 vk::UniqueCommandPool createCommandPool(vk::Device device, uint32_t queueFamilyIndex);
 std::vector<vk::UniqueCommandBuffer> createCommandBuffers(vk::Device device, vk::CommandPool pool, uint32_t n);
 vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool pool);
+std::vector<vk::UniqueFence> createFences(vk::Device device, uint32_t n, bool signaled);
 void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence = {});
 
 struct CommandRec {
     vk::CommandBuffer cmdBuf;
     CommandRec(vk::CommandBuffer cmdBuf) : cmdBuf(cmdBuf) {
         vk::CommandBufferBeginInfo beginInfo;
+        beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
         cmdBuf.begin(beginInfo);
     }
     ~CommandRec() {

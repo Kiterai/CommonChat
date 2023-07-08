@@ -7,8 +7,10 @@ class VulkanManagerCore {
     UsingQueueSet queueSet;
     vk::Device device;
     vk::Queue graphicsQueue;
-    vk::UniqueCommandPool cmdPool;
-    vk::UniqueCommandBuffer cmdBuf;
+    vk::UniqueCommandPool renderCmdPool;
+    std::vector<vk::UniqueCommandBuffer> renderCmdBufs;
+    std::vector<vk::UniqueFence> renderCmdBufFences;
+    uint32_t renderCmdBufIndex = 0;
     vk::UniquePipelineLayout pipelinelayout;
     std::vector<RenderTarget> renderTargets;
 
@@ -21,9 +23,8 @@ class VulkanManagerCore {
 
     void recreateRenderTarget(std::vector<RenderTargetHint> hints);
 
-    void render(uint32_t targetIndex, uint32_t imageIndex,
-                std::initializer_list<vk::Semaphore> waitSemaphores,
-                std::initializer_list<vk::PipelineStageFlags> waitStages,
-                std::initializer_list<vk::Semaphore> signalSemaphores,
-                vk::Fence fence);
+    vk::Fence render(uint32_t targetIndex, uint32_t imageIndex,
+                     std::initializer_list<vk::Semaphore> waitSemaphores,
+                     std::initializer_list<vk::PipelineStageFlags> waitStages,
+                     std::initializer_list<vk::Semaphore> signalSemaphores);
 };

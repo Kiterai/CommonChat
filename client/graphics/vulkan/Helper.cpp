@@ -113,6 +113,16 @@ vk::UniqueCommandBuffer createCommandBuffer(vk::Device device, vk::CommandPool p
     return std::move(bufs[0]);
 }
 
+std::vector<vk::UniqueFence> createFences(vk::Device device, uint32_t n, bool signaled) {
+    vk::FenceCreateInfo createInfo;
+    if (signaled)
+        createInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+    std::vector<vk::UniqueFence> fences;
+    for (uint32_t i = 0; i < n; i++)
+        fences.emplace_back(device.createFenceUnique(createInfo));
+    return fences;
+}
+
 void Submit(std::initializer_list<vk::CommandBuffer> cmdBufs, vk::Queue queue, vk::Fence fence) {
     vk::SubmitInfo submitInfo;
     submitInfo.commandBufferCount = cmdBufs.size();

@@ -3,6 +3,8 @@
 #include <future>
 using namespace std::string_literals;
 
+constexpr uint32_t renderCmdBufNum = 8;
+
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
     attachments[0].format = renderTargetFormat;
@@ -149,8 +151,9 @@ VulkanManagerCore::VulkanManagerCore(
       queueSet{queueSet},
       device{device},
       graphicsQueue{device.getQueue(queueSet.graphicsQueueFamilyIndex, 0)},
-      cmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
-      cmdBuf{createCommandBuffer(device, cmdPool.get())},
+      renderCmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
+      renderCmdBufs{createCommandBuffers(device, renderCmdPool.get(), renderCmdBufNum)},
+      renderCmdBufFences{createFences(device, renderCmdBufNum, true)},
       pipelinelayout{createPipelineLayout(device)} {
 }
 
@@ -179,25 +182,30 @@ void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint3
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
+    // cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
 
-    cmdBuf.draw(3, 1, 0, 0);
+    // cmdBuf.draw(3, 1, 0, 0);
 
     cmdBuf.endRenderPass();
 }
 
-void VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
-                               std::initializer_list<vk::Semaphore> waitSemaphores,
-                               std::initializer_list<vk::PipelineStageFlags> waitStages,
-                               std::initializer_list<vk::Semaphore> signalSemaphores,
-                               vk::Fence fence) {
-    recordRenderCommand(cmdBuf.get(), renderTargets[targetIndex], imageIndex);
+vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
+                                    std::initializer_list<vk::Semaphore> waitSemaphores,
+                                    std::initializer_list<vk::PipelineStageFlags> waitStages,
+                                    std::initializer_list<vk::Semaphore> signalSemaphores) {
+    auto currentFence = renderCmdBufFences[renderCmdBufIndex].get();
+    auto currentCmdBuf = renderCmdBufs[renderCmdBufIndex].get();
+    renderCmdBufIndex = (renderCmdBufIndex + 1) % renderCmdBufNum;
 
-    auto cmdBufs = {cmdBuf.get()};
+    device.waitForFences({currentFence}, true, UINT64_MAX);
+    device.resetFences({currentFence});
+
+    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex);
+    auto submitCmdBufs = {currentCmdBuf};
 
     vk::SubmitInfo submitInfo;
-    submitInfo.commandBufferCount = cmdBufs.size();
-    submitInfo.pCommandBuffers = cmdBufs.begin();
+    submitInfo.commandBufferCount = submitCmdBufs.size();
+    submitInfo.pCommandBuffers = submitCmdBufs.begin();
 
     submitInfo.waitSemaphoreCount = waitSemaphores.size();
     submitInfo.pWaitSemaphores = waitSemaphores.begin();
@@ -206,5 +214,7 @@ void VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     submitInfo.signalSemaphoreCount = signalSemaphores.size();
     submitInfo.pSignalSemaphores = signalSemaphores.begin();
 
-    graphicsQueue.submit({submitInfo}, fence);
+    graphicsQueue.submit({submitInfo}, currentFence);
+
+    return currentFence;
 }

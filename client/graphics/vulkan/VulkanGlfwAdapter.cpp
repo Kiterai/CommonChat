@@ -223,20 +223,19 @@ void VulkanManagerGlfw::buildRenderTarget() {
     flightFramesNum = std::min(flightFramesNumDefault, hints[0].images.size());
 
     vk::SemaphoreCreateInfo semaphoreCreateInfo;
-    vk::FenceCreateInfo fenceCreateInfo;
-    fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
     imageAcquiredSemaphores.clear();
     imageRenderedSemaphores.clear();
-    imageReadyToUseFence.clear();
     for (uint32_t i = 0; i < flightFramesNum; i++) {
         imageAcquiredSemaphores.emplace_back(device->createSemaphoreUnique(semaphoreCreateInfo));
         imageRenderedSemaphores.emplace_back(device->createSemaphoreUnique(semaphoreCreateInfo));
-        imageReadyToUseFence.emplace_back(device->createFenceUnique(fenceCreateInfo));
     }
+    frameFlightFence.clear();
+    frameFlightFence.resize(flightFramesNum);
 }
 
 void VulkanManagerGlfw::render() {
-    device->waitForFences({imageReadyToUseFence[flightFrameIndex].get()}, true, UINT64_MAX);
+    if (frameFlightFence[flightFrameIndex])
+        device->waitForFences({frameFlightFence[flightFrameIndex]}, true, UINT64_MAX);
 
     vk::ResultValue acquireImgResult =
         device->acquireNextImageKHR(swapchain.swapchain.get(), UINT64_MAX,
@@ -244,15 +243,17 @@ void VulkanManagerGlfw::render() {
     if (acquireImgResult.result != vk::Result::eSuccess)
         throw std::runtime_error("failed to acquire image");
 
-    device->resetFences({imageReadyToUseFence[flightFrameIndex].get()});
-    core.render(0, acquireImgResult.value,
-                {imageAcquiredSemaphores[flightFrameIndex].get()},
-                {vk::PipelineStageFlagBits::eColorAttachmentOutput},
-                {imageRenderedSemaphores[flightFrameIndex].get()},
-                imageReadyToUseFence[flightFrameIndex].get());
+    frameFlightFence[flightFrameIndex] =
+        core.render(0, acquireImgResult.value,
+                    {imageAcquiredSemaphores[flightFrameIndex].get()},
+                    {vk::PipelineStageFlagBits::eColorAttachmentOutput},
+                    {imageRenderedSemaphores[flightFrameIndex].get()});
 
     present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value,
             {imageRenderedSemaphores[flightFrameIndex].get()});
+
+    // present(presentQueue, swapchain.swapchain.get(), acquireImgResult.value,
+    //         {imageAcquiredSemaphores[flightFrameIndex].get()});
 
     flightFrameIndex++;
     if (flightFrameIndex >= flightFramesNum)

@@ -22,7 +22,7 @@ class VulkanManagerGlfw : public IGraphics {
     uint32_t flightFramesNum, flightFrameIndex = 0;
     std::vector<vk::UniqueSemaphore> imageAcquiredSemaphores;
     std::vector<vk::UniqueSemaphore> imageRenderedSemaphores;
-    std::vector<vk::UniqueFence> imageReadyToUseFence;
+    std::vector<vk::Fence> frameFlightFence;
 
   public:
     VulkanManagerGlfw(GLFWwindow *window);
