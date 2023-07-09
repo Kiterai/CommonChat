@@ -32,7 +32,7 @@ void writeByBufferCopy(vk::Device device, vk::CommandBuffer cmdBuf, vk::Queue qu
     cmdBuf.copyBuffer(srcBuf, dstBuf, {bufCopy});
 }
 
-Buffer::Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlagBits usage, std::optional<vk::MemoryPropertyFlags> memFlagReq) {
+Buffer::Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq) {
     vk::BufferCreateInfo bufCreateInfo;
     bufCreateInfo.size = sz;
     bufCreateInfo.usage = usage;
@@ -48,15 +48,18 @@ Buffer::Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize 
     device.bindBufferMemory(buffer.get(), memory.get(), 0);
 }
 
-ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlagBits usage, vk::Fence fence)
-    : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal} {
+ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence)
+    : Buffer{physDevice, device, sz, usage | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
     Buffer stagingBuf{physDevice, device, sz, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible};
+    device.waitForFences({fence}, true, UINT64_MAX);
+    device.resetFences({fence});
     writeByMemoryMapping(device, stagingBuf.getMemory(), datSrc, sz, 0);
     writeByBufferCopy(device, cmdBuf, queue, stagingBuf.getBuffer(), buffer.get(), sz, 0, 0, fence);
     device.waitForFences({fence}, true, UINT64_MAX);
+    device.resetFences({fence});
 }
 
-CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlagBits usage, vk::Fence fence)
+CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence)
     : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal & vk::MemoryPropertyFlagBits::eHostVisible},
       device{device} {
     pMem = device.mapMemory(memory.get(), 0, sz);
