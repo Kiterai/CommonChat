@@ -48,14 +48,6 @@ Buffer::Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize 
     device.bindBufferMemory(buffer.get(), memory.get(), 0);
 }
 
-vk::Buffer Buffer::getBuffer() {
-    return buffer.get();
-}
-
-vk::DeviceMemory Buffer::getMemory() {
-    return memory.get();
-}
-
 ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlagBits usage, vk::Fence fence)
     : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal} {
     Buffer stagingBuf{physDevice, device, sz, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible};
@@ -72,8 +64,4 @@ CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Devi
 
 CommunicationBuffer::~CommunicationBuffer() {
     device.unmapMemory(memory.get());
-}
-
-void *CommunicationBuffer::get() const {
-    return pMem;
 }
