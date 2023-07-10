@@ -1,4 +1,5 @@
 #include "Helper.hpp"
+#include "Buffer.hpp"
 #include <vulkan/vulkan.hpp>
 
 class VulkanManagerCore {
@@ -14,12 +15,18 @@ class VulkanManagerCore {
     vk::UniquePipelineLayout pipelinelayout;
     std::vector<RenderTarget> renderTargets;
 
+    vk::UniqueCommandBuffer assetManageCmdBuf;
+    vk::UniqueFence assetManageFence;
+    std::optional<ReadonlyBuffer> modelVertBuffer;
+    std::optional<ReadonlyBuffer> modelIndexBuffer;
+
   public:
     VulkanManagerCore(
         vk::Instance instance,
         vk::PhysicalDevice physicalDevice,
         const UsingQueueSet &queueSet,
         vk::Device device);
+    ~VulkanManagerCore();
 
     void recreateRenderTarget(std::vector<RenderTargetHint> hints);
 

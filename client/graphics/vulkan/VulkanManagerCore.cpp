@@ -5,6 +5,11 @@ using namespace std::string_literals;
 
 constexpr uint32_t renderCmdBufNum = 8;
 
+struct Vertex {
+    float x, y, z;
+};
+std::vector<Vertex> vertices = {{0.0, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0}};
+
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
     attachments[0].format = renderTargetFormat;
@@ -62,12 +67,28 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     viewportState.pViewports = viewports;
     viewportState.scissorCount = 1;
     viewportState.pScissors = scissors;
+    
+    vk::VertexInputBindingDescription vertBindings[1];
+    vk::VertexInputAttributeDescription vertAttrs[1];
+
+    vertBindings[0].binding = 0;
+    vertBindings[0].inputRate = vk::VertexInputRate::eVertex;
+    vertBindings[0].stride = sizeof(Vertex);
+    vertAttrs[0].binding = 0;
+    vertAttrs[0].location = 0;
+    vertAttrs[0].offset = 0;
+    vertAttrs[0].format = vk::Format::eR32G32B32Sfloat;
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    vertexInputInfo.pVertexAttributeDescriptions = nullptr;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = nullptr;
+    vertexInputInfo.vertexBindingDescriptionCount = std::size(vertBindings);
+    vertexInputInfo.pVertexBindingDescriptions = vertBindings;
+    vertexInputInfo.vertexAttributeDescriptionCount = std::size(vertAttrs);
+    vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
+    
+    // vertexInputInfo.vertexBindingDescriptionCount = 0;
+    // vertexInputInfo.pVertexBindingDescriptions = vertBindings;
+    // vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    // vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
     inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -154,7 +175,20 @@ VulkanManagerCore::VulkanManagerCore(
       renderCmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
       renderCmdBufs{createCommandBuffers(device, renderCmdPool.get(), renderCmdBufNum)},
       renderCmdBufFences{createFences(device, renderCmdBufNum, true)},
-      pipelinelayout{createPipelineLayout(device)} {
+      pipelinelayout{createPipelineLayout(device)},
+      assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
+      assetManageFence{std::move(createFences(device, 1, true)[0])} {
+
+    modelVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                            static_cast<void*>(vertices.data()), vertices.size() * sizeof(Vertex),
+                            vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    // modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+    //                         vertices.data(), vertices.size() * sizeof(Vertex),
+    //                         vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+}
+
+VulkanManagerCore::~VulkanManagerCore() {
+    graphicsQueue.waitIdle();
 }
 
 void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
@@ -165,7 +199,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    });
 }
 
-void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index) {
+void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index, vk::Buffer buffer) {
     CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
@@ -182,6 +216,7 @@ void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint3
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
+    cmdBuf.bindVertexBuffers(0, { buffer }, { 0 });
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
 
     cmdBuf.draw(3, 1, 0, 0);
@@ -199,7 +234,7 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
 
-    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex);
+    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex, modelVertBuffer.value().getBuffer());
     auto submitCmdBufs = {currentCmdBuf};
 
     vk::SubmitInfo submitInfo;
