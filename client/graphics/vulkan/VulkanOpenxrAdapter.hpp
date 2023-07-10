@@ -1,5 +1,4 @@
 #include "../IGraphics.hpp"
-#include "Helper.hpp"
 #include "VulkanManagerCore.hpp"
 #include <vulkan/vulkan.hpp>
 #include <openxr/openxr_platform.h>

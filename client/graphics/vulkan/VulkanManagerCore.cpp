@@ -1,5 +1,4 @@
 #include "VulkanManagerCore.hpp"
-#include "Helper.hpp"
 #include <future>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>

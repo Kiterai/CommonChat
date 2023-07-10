@@ -1,7 +1,6 @@
 #ifdef USE_DESKTOP_MODE
 
 #include "../IGraphics.hpp"
-#include "Helper.hpp"
 #include "VulkanManagerCore.hpp"
 #include <GLFW/glfw3.h>
 #include <vector>

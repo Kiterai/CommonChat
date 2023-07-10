@@ -2,7 +2,6 @@
 
 #include "VulkanGlfwAdapter.hpp"
 #include "../../desktop/GLFWHelper.hpp"
-#include "Helper.hpp"
 
 #ifdef _DEBUG
 #include <iostream>
