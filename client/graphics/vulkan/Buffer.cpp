@@ -68,7 +68,7 @@ void ReadonlyBuffer::write(vk::PhysicalDevice physDevice, vk::Device device, vk:
 }
 
 CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage)
-    : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal & vk::MemoryPropertyFlagBits::eHostVisible},
+    : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal | vk::MemoryPropertyFlagBits::eHostVisible},
       device{device} {
     pMem = device.mapMemory(memory.get(), 0, sz);
 }
