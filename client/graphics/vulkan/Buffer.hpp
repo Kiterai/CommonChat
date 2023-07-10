@@ -29,7 +29,7 @@ class CommunicationBuffer : public Buffer {
 
   public:
     CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage);
-    CommunicationBuffer(CommunicationBuffer&&) = default;
+    CommunicationBuffer(CommunicationBuffer&&);
     ~CommunicationBuffer();
     void *get() const { return pMem; };
     template <size_t Count>

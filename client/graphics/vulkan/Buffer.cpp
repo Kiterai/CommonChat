@@ -73,6 +73,12 @@ CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Devi
     pMem = device.mapMemory(memory.get(), 0, sz);
 }
 
+CommunicationBuffer::CommunicationBuffer(CommunicationBuffer &&buf)
+    : Buffer(std::move(buf)), device(buf.device), pMem(buf.pMem) {
+    buf.pMem = nullptr;
+}
+
 CommunicationBuffer::~CommunicationBuffer() {
-    device.unmapMemory(memory.get());
+    if (pMem)
+        device.unmapMemory(memory.get());
 }
