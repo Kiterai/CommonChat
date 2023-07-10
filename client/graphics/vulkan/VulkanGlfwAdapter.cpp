@@ -214,6 +214,10 @@ VulkanManagerGlfw::VulkanManagerGlfw(GLFWwindow *window) : instance{createVulkan
                                                            presentQueue{this->device->getQueue(queueSet.graphicsQueueFamilyIndex, 0)},
                                                            core{instance.get(), physicalDevice, queueSet, device.get()} {}
 
+VulkanManagerGlfw::~VulkanManagerGlfw() {
+    presentQueue.waitIdle();
+}
+
 void VulkanManagerGlfw::buildRenderTarget() {
     swapchain = createVulkanSwapchainWithGlfw(physicalDevice, device.get(), surface.get());
     auto hints = getRenderTargetHintsWithGlfw(physicalDevice, device.get(), swapchain);

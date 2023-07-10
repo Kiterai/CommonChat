@@ -26,6 +26,7 @@ class VulkanManagerGlfw : public IGraphics {
 
   public:
     VulkanManagerGlfw(GLFWwindow *window);
+    ~VulkanManagerGlfw();
 
     void buildRenderTarget();
 
