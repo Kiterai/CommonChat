@@ -43,16 +43,15 @@ add_executable(CommonChat ${CLI_SRC} shader.vert.spv shader.frag.spv)
 set_property(TARGET CommonChat PROPERTY CXX_STANDARD 17)
 target_compile_definitions(CommonChat PRIVATE XR_USE_GRAPHICS_API_VULKAN)
 
-target_link_libraries(CommonChat PRIVATE uvw::uvw)
 if(USE_DESKTOP_MODE)
 target_link_libraries(CommonChat PRIVATE glfw)
 target_compile_definitions(CommonChat PRIVATE USE_DESKTOP_MODE)
+endif()
 target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
 target_link_libraries(CommonChat PRIVATE OpenXR::headers OpenXR::openxr_loader)
-endif()
+target_link_libraries(CommonChat PRIVATE uvw::uvw)
 target_link_libraries(main PRIVATE glm::glm)
-# add_library(CommonChat shader.vert.spv)
 
 # Server
 file(GLOB_RECURSE SRV_SRC server/*.cpp)
