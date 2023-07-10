@@ -9,6 +9,7 @@ class Buffer {
 
   public:
     Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq);
+    Buffer(Buffer&&) = default;
 
     vk::Buffer getBuffer() { return buffer.get(); };
     vk::DeviceMemory getMemory() { return memory.get(); };
@@ -18,6 +19,7 @@ class ReadonlyBuffer : public Buffer {
   public:
     ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence);
     ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::BufferUsageFlags usage, vk::DeviceSize sz);
+    ReadonlyBuffer(ReadonlyBuffer&&) = default;
     void write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::DeviceSize dstOffset, vk::Fence fence);
 };
 
@@ -27,6 +29,7 @@ class CommunicationBuffer : public Buffer {
 
   public:
     CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage);
+    CommunicationBuffer(CommunicationBuffer&&) = default;
     ~CommunicationBuffer();
     void *get() const { return pMem; };
     template <size_t Count>
