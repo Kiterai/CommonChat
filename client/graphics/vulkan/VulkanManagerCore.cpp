@@ -1,14 +1,62 @@
 #include "VulkanManagerCore.hpp"
 #include "Helper.hpp"
 #include <future>
+#include <iostream>
 using namespace std::string_literals;
 
 constexpr uint32_t renderCmdBufNum = 8;
+constexpr uint32_t coreflightFramesNum = 2;
 
 struct Vertex {
     float x, y, z;
 };
 std::vector<Vertex> vertices = {{0.0, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0}};
+
+struct SceneData {
+    float p[3];
+};
+
+vk::UniqueDescriptorPool createDescPool(vk::Device device) {
+    vk::DescriptorPoolCreateInfo createInfo;
+    vk::DescriptorPoolSize poolSizes[4];
+    poolSizes[0].descriptorCount = 8;
+    poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
+    poolSizes[1].descriptorCount = 8;
+    poolSizes[1].type = vk::DescriptorType::eUniformBufferDynamic;
+    poolSizes[2].descriptorCount = 8;
+    poolSizes[2].type = vk::DescriptorType::eSampledImage;
+    poolSizes[3].descriptorCount = 8;
+    poolSizes[3].type = vk::DescriptorType::eStorageBuffer;
+
+    createInfo.maxSets = 16;
+    createInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+    createInfo.poolSizeCount = std::size(poolSizes);
+    createInfo.pPoolSizes = poolSizes;
+    return device.createDescriptorPoolUnique(createInfo);
+}
+
+vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
+    vk::DescriptorSetLayoutBinding binding[1];
+    binding[0].binding = 0;
+    binding[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+    binding[0].descriptorCount = 1;
+    binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
+
+    vk::DescriptorSetLayoutCreateInfo createInfo;
+    createInfo.bindingCount = std::size(binding);
+    createInfo.pBindings = binding;
+
+    return device.createDescriptorSetLayoutUnique(createInfo);
+}
+
+std::vector<vk::UniqueDescriptorSet> createDescSets(vk::Device device, vk::DescriptorPool pool, vk::DescriptorSetLayout layout, uint32_t n) {
+    std::vector<vk::DescriptorSetLayout> layouts(n, layout);
+    vk::DescriptorSetAllocateInfo allocInfo;
+    allocInfo.descriptorPool = pool;
+    allocInfo.pSetLayouts = layouts.data();
+    allocInfo.descriptorSetCount = layouts.size();
+    return device.allocateDescriptorSetsUnique(allocInfo);
+}
 
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
@@ -41,11 +89,10 @@ vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTarget
     return device.createRenderPassUnique(renderpassCreateInfo);
 }
 
-vk::UniquePipelineLayout createPipelineLayout(vk::Device device) {
+vk::UniquePipelineLayout createPipelineLayout(vk::Device device, std::initializer_list<vk::DescriptorSetLayout> descLayouts) {
     vk::PipelineLayoutCreateInfo layoutCreateInfo;
-    layoutCreateInfo.setLayoutCount = 0;
-    layoutCreateInfo.pSetLayouts = nullptr;
-
+    layoutCreateInfo.setLayoutCount = descLayouts.size();
+    layoutCreateInfo.pSetLayouts = descLayouts.begin();
     return device.createPipelineLayoutUnique(layoutCreateInfo);
 }
 
@@ -67,7 +114,7 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     viewportState.pViewports = viewports;
     viewportState.scissorCount = 1;
     viewportState.pScissors = scissors;
-    
+
     vk::VertexInputBindingDescription vertBindings[1];
     vk::VertexInputAttributeDescription vertAttrs[1];
 
@@ -84,11 +131,6 @@ vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::Re
     vertexInputInfo.pVertexBindingDescriptions = vertBindings;
     vertexInputInfo.vertexAttributeDescriptionCount = std::size(vertAttrs);
     vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
-    
-    // vertexInputInfo.vertexBindingDescriptionCount = 0;
-    // vertexInputInfo.pVertexBindingDescriptions = vertBindings;
-    // vertexInputInfo.vertexAttributeDescriptionCount = 0;
-    // vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
 
     vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
     inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -175,16 +217,46 @@ VulkanManagerCore::VulkanManagerCore(
       renderCmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
       renderCmdBufs{createCommandBuffers(device, renderCmdPool.get(), renderCmdBufNum)},
       renderCmdBufFences{createFences(device, renderCmdBufNum, true)},
-      pipelinelayout{createPipelineLayout(device)},
+      descPool{createDescPool(device)},
+      descLayout{createDescLayout(device)},
+      descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
+      pipelinelayout{createPipelineLayout(device, {descLayout.get()})},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])} {
 
     modelVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                            static_cast<void*>(vertices.data()), vertices.size() * sizeof(Vertex),
+                            static_cast<void *>(vertices.data()), vertices.size() * sizeof(Vertex),
                             vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     // modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
     //                         vertices.data(), vertices.size() * sizeof(Vertex),
     //                         vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+
+    for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+        uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
+    }
+
+    for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+        vk::WriteDescriptorSet writeDescSet;
+        writeDescSet.dstSet = descSets[i].get();
+        writeDescSet.dstBinding = 0;
+        writeDescSet.dstArrayElement = 0;
+        writeDescSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+
+        vk::DescriptorBufferInfo descBufInfo[1];
+        descBufInfo[0].buffer = uniformBuffer[i].getBuffer();
+        descBufInfo[0].offset = 0;
+        descBufInfo[0].range = sizeof(SceneData);
+
+        writeDescSet.descriptorCount = std::size(descBufInfo);
+        writeDescSet.pBufferInfo = descBufInfo;
+
+        SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
+        dat->p[0] = 0.5;
+        dat->p[1] = -0.5;
+        dat->p[2] = 0.6;
+
+        device.updateDescriptorSets({writeDescSet}, {});
+    }
 }
 
 VulkanManagerCore::~VulkanManagerCore() {
@@ -199,7 +271,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    });
 }
 
-void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index, vk::Buffer buffer) {
+void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index, vk::Buffer buffer, vk::PipelineLayout pipelineLayout, vk::DescriptorSet descSet) {
     CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
@@ -216,7 +288,8 @@ void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint3
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    cmdBuf.bindVertexBuffers(0, { buffer }, { 0 });
+    cmdBuf.bindVertexBuffers(0, {buffer}, {0});
+    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, {descSet}, {});
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
 
     cmdBuf.draw(3, 1, 0, 0);
@@ -234,7 +307,7 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
 
-    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex, modelVertBuffer.value().getBuffer());
+    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex, modelVertBuffer.value().getBuffer(), pipelinelayout.get(), descSets[0].get());
     auto submitCmdBufs = {currentCmdBuf};
 
     vk::SubmitInfo submitInfo;

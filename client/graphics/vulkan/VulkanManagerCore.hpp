@@ -12,6 +12,11 @@ class VulkanManagerCore {
     std::vector<vk::UniqueCommandBuffer> renderCmdBufs;
     std::vector<vk::UniqueFence> renderCmdBufFences;
     uint32_t renderCmdBufIndex = 0;
+
+    vk::UniqueDescriptorPool descPool;
+    vk::UniqueDescriptorSetLayout descLayout;
+    std::vector<vk::UniqueDescriptorSet> descSets;
+
     vk::UniquePipelineLayout pipelinelayout;
     std::vector<RenderTarget> renderTargets;
 
@@ -19,6 +24,7 @@ class VulkanManagerCore {
     vk::UniqueFence assetManageFence;
     std::optional<ReadonlyBuffer> modelVertBuffer;
     std::optional<ReadonlyBuffer> modelIndexBuffer;
+    std::vector<CommunicationBuffer> uniformBuffer;
 
   public:
     VulkanManagerCore(
