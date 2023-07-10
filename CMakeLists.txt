@@ -21,6 +21,7 @@ find_package(Vulkan REQUIRED)
 if(USE_DESKTOP_MODE)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenXR CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
 endif()
 
 # Client
@@ -50,6 +51,7 @@ target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
 target_link_libraries(CommonChat PRIVATE OpenXR::headers OpenXR::openxr_loader)
 endif()
+target_link_libraries(main PRIVATE glm::glm)
 # add_library(CommonChat shader.vert.spv)
 
 # Server
