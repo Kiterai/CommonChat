@@ -24,8 +24,21 @@ find_package(OpenXR CONFIG REQUIRED)
 endif()
 
 # Client
+add_custom_command(
+    OUTPUT shader.vert.spv
+    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
+    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.vert -o ${PROJECT_BINARY_DIR}/shader.vert.spv
+    MAIN_DEPENDENCY ${CMAKE_SOURCE_DIR}/client/shaders/shader.vert
+)
+add_custom_command(
+    OUTPUT shader.frag.spv
+    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
+    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.frag -o ${PROJECT_BINARY_DIR}/shader.frag.spv
+    MAIN_DEPENDENCY ${CMAKE_SOURCE_DIR}/client/shaders/shader.frag
+)
+
 file(GLOB_RECURSE CLI_SRC client/*.cpp)
-add_executable(CommonChat ${CLI_SRC})
+add_executable(CommonChat ${CLI_SRC} shader.vert.spv shader.frag.spv)
 set_property(TARGET CommonChat PROPERTY CXX_STANDARD 17)
 target_compile_definitions(CommonChat PRIVATE XR_USE_GRAPHICS_API_VULKAN)
 
@@ -37,20 +50,7 @@ target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
 target_link_libraries(CommonChat PRIVATE OpenXR::headers OpenXR::openxr_loader)
 endif()
-
-add_custom_command(
-    TARGET CommonChat
-    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
-    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.vert -o ${PROJECT_BINARY_DIR}/shader.vert.spv
-    DEPENDS client/shaders/shader.vert
-)
-
-add_custom_command(
-    TARGET CommonChat
-    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
-    COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.frag -o ${PROJECT_BINARY_DIR}/shader.frag.spv
-    DEPENDS client/shaders/shader.frag
-)
+# add_library(CommonChat shader.vert.spv)
 
 # Server
 file(GLOB_RECURSE SRV_SRC server/*.cpp)
