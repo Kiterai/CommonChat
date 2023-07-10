@@ -26,7 +26,7 @@ class CommunicationBuffer : public Buffer {
     void *pMem;
 
   public:
-    CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence);
+    CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage);
     ~CommunicationBuffer();
     void *get() const { return pMem; };
     template <size_t Count>

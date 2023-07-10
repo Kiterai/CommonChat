@@ -67,7 +67,7 @@ void ReadonlyBuffer::write(vk::PhysicalDevice physDevice, vk::Device device, vk:
     device.resetFences({fence});
 }
 
-CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence)
+CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage)
     : Buffer{physDevice, device, sz, usage, vk::MemoryPropertyFlagBits::eDeviceLocal & vk::MemoryPropertyFlagBits::eHostVisible},
       device{device} {
     pMem = device.mapMemory(memory.get(), 0, sz);
