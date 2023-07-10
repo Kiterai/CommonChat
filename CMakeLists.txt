@@ -51,7 +51,7 @@ target_include_directories(CommonChat PRIVATE ${Vulkan_INCLUDE_DIRS})
 target_link_libraries(CommonChat PRIVATE ${Vulkan_LIBRARIES})
 target_link_libraries(CommonChat PRIVATE OpenXR::headers OpenXR::openxr_loader)
 target_link_libraries(CommonChat PRIVATE uvw::uvw)
-target_link_libraries(main PRIVATE glm::glm)
+target_link_libraries(CommonChat PRIVATE glm::glm)
 
 # Server
 file(GLOB_RECURSE SRV_SRC server/*.cpp)
