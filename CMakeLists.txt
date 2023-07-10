@@ -42,7 +42,14 @@ add_custom_command(
     TARGET CommonChat
     # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
     COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.vert -o ${PROJECT_BINARY_DIR}/shader.vert.spv
+    DEPENDS client/shaders/shader.vert
+)
+
+add_custom_command(
+    TARGET CommonChat
+    # COMMAND mkdir ${PROJECT_BINARY_DIR}/assets
     COMMAND glslc ${CMAKE_SOURCE_DIR}/client/shaders/shader.frag -o ${PROJECT_BINARY_DIR}/shader.frag.spv
+    DEPENDS client/shaders/shader.frag
 )
 
 # Server
