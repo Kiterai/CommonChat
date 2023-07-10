@@ -1,7 +1,8 @@
 #include "VulkanManagerCore.hpp"
 #include "Helper.hpp"
 #include <future>
-#include <iostream>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 using namespace std::string_literals;
 
 constexpr uint32_t renderCmdBufNum = 8;
@@ -10,10 +11,11 @@ constexpr uint32_t coreflightFramesNum = 2;
 struct Vertex {
     float x, y, z;
 };
-std::vector<Vertex> vertices = {{0.0, -0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 0.5, 0.0}};
+std::vector<Vertex> vertices = {{0.5, 0.0, 0.0}, {-0.5, 0.0, 0.0}, {0.0, 0.0, 0.5}};
 
 struct SceneData {
-    float p[3];
+    glm::mat4x4 view;
+    glm::mat4x4 proj;
 };
 
 vk::UniqueDescriptorPool createDescPool(vk::Device device) {
@@ -251,9 +253,8 @@ VulkanManagerCore::VulkanManagerCore(
         writeDescSet.pBufferInfo = descBufInfo;
 
         SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
-        dat->p[0] = 0.5;
-        dat->p[1] = -0.5;
-        dat->p[2] = 0.6;
+        dat->view = glm::lookAt(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        dat->proj = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 10.0f);
 
         device.updateDescriptorSets({writeDescSet}, {});
     }

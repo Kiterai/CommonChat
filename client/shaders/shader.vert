@@ -2,11 +2,12 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(set = 0, binding = 0) uniform SceneData {
-    vec3 v;
-} sceneData;
+    mat4 view;
+    mat4 proj;
+} camera;
 
 layout(location = 0) in vec3 inPos;
 
 void main() {
-    gl_Position = vec4(inPos + sceneData.v, 1.0);
+    gl_Position = camera.proj * camera.view * vec4(inPos, 1.0);
 }
