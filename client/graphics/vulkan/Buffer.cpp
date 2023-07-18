@@ -64,7 +64,6 @@ void ReadonlyBuffer::write(vk::PhysicalDevice physDevice, vk::Device device, vk:
     writeByMemoryMapping(device, stagingBuf.getMemory(), datSrc, sz, 0);
     writeByBufferCopy(device, cmdBuf, queue, stagingBuf.getBuffer(), buffer.get(), sz, 0, offset, fence);
     device.waitForFences({fence}, true, UINT64_MAX);
-    device.resetFences({fence});
 }
 
 CommunicationBuffer::CommunicationBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize sz, vk::BufferUsageFlags usage)
