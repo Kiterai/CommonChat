@@ -97,113 +97,165 @@ vk::UniquePipelineLayout createPipelineLayout(vk::Device device, std::initialize
     return device.createPipelineLayoutUnique(layoutCreateInfo);
 }
 
-vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::RenderPass renderpass, vk::PipelineLayout pipelineLayout) {
-    vk::Viewport viewports[1];
-    viewports[0].x = 0.0;
-    viewports[0].y = 0.0;
-    viewports[0].minDepth = 0.0;
-    viewports[0].maxDepth = 1.0;
-    viewports[0].width = extent.width;
-    viewports[0].height = extent.height;
-
-    vk::Rect2D scissors[1];
-    scissors[0].offset = vk::Offset2D{0, 0};
-    scissors[0].extent = extent;
-
-    vk::PipelineViewportStateCreateInfo viewportState;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = viewports;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = scissors;
-
-    vk::VertexInputBindingDescription vertBindings[1];
-    vk::VertexInputAttributeDescription vertAttrs[1];
-
-    vertBindings[0].binding = 0;
-    vertBindings[0].inputRate = vk::VertexInputRate::eVertex;
-    vertBindings[0].stride = sizeof(Vertex);
-    vertAttrs[0].binding = 0;
-    vertAttrs[0].location = 0;
-    vertAttrs[0].offset = 0;
-    vertAttrs[0].format = vk::Format::eR32G32B32Sfloat;
-
-    vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
-    vertexInputInfo.vertexBindingDescriptionCount = std::size(vertBindings);
-    vertexInputInfo.pVertexBindingDescriptions = vertBindings;
-    vertexInputInfo.vertexAttributeDescriptionCount = std::size(vertAttrs);
-    vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
-
-    vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
-    inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
-    inputAssembly.primitiveRestartEnable = false;
-
-    vk::PipelineRasterizationStateCreateInfo rasterizer;
-    rasterizer.depthClampEnable = false;
-    rasterizer.rasterizerDiscardEnable = false;
-    rasterizer.polygonMode = vk::PolygonMode::eFill;
-    rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = vk::CullModeFlagBits::eBack;
-    rasterizer.frontFace = vk::FrontFace::eClockwise;
-    rasterizer.depthBiasEnable = false;
-
-    vk::PipelineMultisampleStateCreateInfo multisample;
-    multisample.sampleShadingEnable = false;
-    multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
-
-    vk::PipelineColorBlendAttachmentState blendattachment[1];
-    blendattachment[0].colorWriteMask =
-        vk::ColorComponentFlagBits::eA |
-        vk::ColorComponentFlagBits::eR |
-        vk::ColorComponentFlagBits::eG |
-        vk::ColorComponentFlagBits::eB;
-    blendattachment[0].blendEnable = false;
-
-    vk::PipelineColorBlendStateCreateInfo blend;
-    blend.logicOpEnable = false;
-    blend.attachmentCount = 1;
-    blend.pAttachments = blendattachment;
-
-    auto featVertShader = std::async(std::launch::async, [device]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
-    auto featFragShader = std::async(std::launch::async, [device]() { return createShaderModuleFromFile(device, "shader.frag.spv"); });
-
-    vk::UniqueShaderModule vertShader = featVertShader.get();
-    vk::UniqueShaderModule fragShader = featFragShader.get();
-
-    vk::PipelineShaderStageCreateInfo shaderStage[2];
-    shaderStage[0].stage = vk::ShaderStageFlagBits::eVertex;
-    shaderStage[0].module = vertShader.get();
-    shaderStage[0].pName = "main";
-    shaderStage[1].stage = vk::ShaderStageFlagBits::eFragment;
-    shaderStage[1].module = fragShader.get();
-    shaderStage[1].pName = "main";
-
-    vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
-    pipelineCreateInfo.pViewportState = &viewportState;
-    pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
-    pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
-    pipelineCreateInfo.pRasterizationState = &rasterizer;
-    pipelineCreateInfo.pMultisampleState = &multisample;
-    pipelineCreateInfo.pColorBlendState = &blend;
-    pipelineCreateInfo.layout = pipelineLayout;
-    pipelineCreateInfo.renderPass = renderpass;
-    pipelineCreateInfo.subpass = 0;
-    pipelineCreateInfo.stageCount = 2;
-    pipelineCreateInfo.pStages = shaderStage;
-
-    return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
-}
-
 RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint, vk::PipelineLayout pipelinelayout) {
     RenderTarget rt;
 
     rt.extent = hint.extent;
+    rt.format = hint.format;
     rt.imageViews = createImageViewsFromImages(device, hint.images, hint.format);
-    rt.renderpass = createRenderPass(device, hint.format);
-    rt.frameBufs = createFrameBufsFromImageView(device, rt.renderpass.get(), hint.extent, {std::ref(rt.imageViews)});
-    rt.pipeline = createPipeline(device, hint.extent, rt.renderpass.get(), pipelinelayout);
+    // rt.renderpass = createRenderPass(device, hint.format);
+    // rt.frameBufs = createFrameBufsFromImageView(device, rt.renderpass.get(), hint.extent, {std::ref(rt.imageViews)});
+    // rt.pipeline = createPipeline(device, hint.extent, rt.renderpass.get(), pipelinelayout);
 
     return rt;
 }
+
+class SimpleRenderProc : public IRenderProc {
+    vk::Device device;
+    // vk::DescriptorPool pool;
+    // vk::UniqueDescriptorSetLayout descLayout;
+    // std::vector<vk::UniqueDescriptorSet> descSets;
+    vk::UniquePipelineLayout pipelinelayout;
+    std::vector<vk::UniqueShaderModule> shaders;
+
+    vk::UniquePipeline createPipeline(vk::Device device, vk::Extent2D extent, vk::RenderPass renderpass, vk::PipelineLayout pipelineLayout) {
+        vk::Viewport viewports[1];
+        viewports[0].x = 0.0;
+        viewports[0].y = 0.0;
+        viewports[0].minDepth = 0.0;
+        viewports[0].maxDepth = 1.0;
+        viewports[0].width = extent.width;
+        viewports[0].height = extent.height;
+
+        vk::Rect2D scissors[1];
+        scissors[0].offset = vk::Offset2D{0, 0};
+        scissors[0].extent = extent;
+
+        vk::PipelineViewportStateCreateInfo viewportState;
+        viewportState.viewportCount = 1;
+        viewportState.pViewports = viewports;
+        viewportState.scissorCount = 1;
+        viewportState.pScissors = scissors;
+
+        vk::VertexInputBindingDescription vertBindings[1];
+        vk::VertexInputAttributeDescription vertAttrs[1];
+
+        vertBindings[0].binding = 0;
+        vertBindings[0].inputRate = vk::VertexInputRate::eVertex;
+        vertBindings[0].stride = sizeof(Vertex);
+        vertAttrs[0].binding = 0;
+        vertAttrs[0].location = 0;
+        vertAttrs[0].offset = 0;
+        vertAttrs[0].format = vk::Format::eR32G32B32Sfloat;
+
+        vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+        vertexInputInfo.vertexBindingDescriptionCount = std::size(vertBindings);
+        vertexInputInfo.pVertexBindingDescriptions = vertBindings;
+        vertexInputInfo.vertexAttributeDescriptionCount = std::size(vertAttrs);
+        vertexInputInfo.pVertexAttributeDescriptions = vertAttrs;
+
+        vk::PipelineInputAssemblyStateCreateInfo inputAssembly;
+        inputAssembly.topology = vk::PrimitiveTopology::eTriangleList;
+        inputAssembly.primitiveRestartEnable = false;
+
+        vk::PipelineRasterizationStateCreateInfo rasterizer;
+        rasterizer.depthClampEnable = false;
+        rasterizer.rasterizerDiscardEnable = false;
+        rasterizer.polygonMode = vk::PolygonMode::eFill;
+        rasterizer.lineWidth = 1.0f;
+        rasterizer.cullMode = vk::CullModeFlagBits::eBack;
+        rasterizer.frontFace = vk::FrontFace::eClockwise;
+        rasterizer.depthBiasEnable = false;
+
+        vk::PipelineMultisampleStateCreateInfo multisample;
+        multisample.sampleShadingEnable = false;
+        multisample.rasterizationSamples = vk::SampleCountFlagBits::e1;
+
+        vk::PipelineColorBlendAttachmentState blendattachment[1];
+        blendattachment[0].colorWriteMask =
+            vk::ColorComponentFlagBits::eA |
+            vk::ColorComponentFlagBits::eR |
+            vk::ColorComponentFlagBits::eG |
+            vk::ColorComponentFlagBits::eB;
+        blendattachment[0].blendEnable = false;
+
+        vk::PipelineColorBlendStateCreateInfo blend;
+        blend.logicOpEnable = false;
+        blend.attachmentCount = 1;
+        blend.pAttachments = blendattachment;
+
+        vk::PipelineShaderStageCreateInfo shaderStage[2];
+        shaderStage[0].stage = vk::ShaderStageFlagBits::eVertex;
+        shaderStage[0].module = shaders[0].get();
+        shaderStage[0].pName = "main";
+        shaderStage[1].stage = vk::ShaderStageFlagBits::eFragment;
+        shaderStage[1].module = shaders[1].get();
+        shaderStage[1].pName = "main";
+
+        vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
+        pipelineCreateInfo.pViewportState = &viewportState;
+        pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
+        pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
+        pipelineCreateInfo.pRasterizationState = &rasterizer;
+        pipelineCreateInfo.pMultisampleState = &multisample;
+        pipelineCreateInfo.pColorBlendState = &blend;
+        pipelineCreateInfo.layout = pipelineLayout;
+        pipelineCreateInfo.renderPass = renderpass;
+        pipelineCreateInfo.subpass = 0;
+        pipelineCreateInfo.stageCount = 2;
+        pipelineCreateInfo.pStages = shaderStage;
+
+        return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
+    }
+
+  public:
+    SimpleRenderProc(vk::Device _device, vk::DescriptorSetLayout descLayout)
+        : device(_device) {
+        // descLayout = createDescLayout(device);
+        // descSets = createDescSets(device, pool, descLayout.get(), coreflightFramesNum);
+        pipelinelayout = createPipelineLayout(device, {descLayout});
+
+        auto featVertShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
+        auto featFragShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.frag.spv"); });
+        shaders.push_back(featVertShader.get());
+        shaders.push_back(featFragShader.get());
+    }
+    RenderProcRenderTargetDependant prepareRenderTargetDependant(const RenderTarget &rt) override {
+        RenderProcRenderTargetDependant d;
+        d.renderpass = createRenderPass(device, rt.format);
+        d.pipeline = createPipeline(device, rt.extent, d.renderpass.get(), pipelinelayout.get());
+        d.frameBufs = createFrameBufsFromImageView(device, d.renderpass.get(), rt.extent, {rt.imageViews});
+        return d;
+    };
+    void render(const RenderDetails &rd, const RenderTarget &rt, const RenderProcRenderTargetDependant &rprtd) override {
+        const auto cmdBuf = rd.cmdBuf;
+        CommandRec cmd{cmdBuf};
+
+        vk::ClearValue clearVal[1];
+        clearVal[0].color.float32[0] = 0.0f;
+        clearVal[0].color.float32[1] = 0.0f;
+        clearVal[0].color.float32[2] = 0.0f;
+        clearVal[0].color.float32[3] = 1.0f;
+
+        vk::RenderPassBeginInfo rpBeginInfo;
+        rpBeginInfo.renderPass = rprtd.renderpass.get();
+        rpBeginInfo.framebuffer = rprtd.frameBufs[rd.imageIndex].get();
+        rpBeginInfo.renderArea = vk::Rect2D{{0, 0}, rt.extent};
+        rpBeginInfo.clearValueCount = 1;
+        rpBeginInfo.pClearValues = clearVal;
+
+        cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
+        cmdBuf.bindVertexBuffers(0, {rd.vertBuf}, {0});
+        cmdBuf.bindIndexBuffer(rd.indexBuf, 0, vk::IndexType::eUint32);
+        cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, {});
+        cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
+
+        cmdBuf.draw(3, 1, 0, 0);
+        // cmdBuf.drawIndexedIndirect(rd.drawBuf, 0, rd.modelsCount, 20);
+        cmdBuf.endRenderPass();
+    };
+    ~SimpleRenderProc() {}
+};
 
 VulkanManagerCore::VulkanManagerCore(
     vk::Instance instance,
@@ -221,16 +273,16 @@ VulkanManagerCore::VulkanManagerCore(
       descPool{createDescPool(device)},
       descLayout{createDescLayout(device)},
       descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
-      pipelinelayout{createPipelineLayout(device, {descLayout.get()})},
+      defaultRenderProc{new SimpleRenderProc{device, descLayout.get()}},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])} {
 
     modelVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                             static_cast<void *>(vertices.data()), vertices.size() * sizeof(Vertex),
                             vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    // modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-    //                         vertices.data(), vertices.size() * sizeof(Vertex),
-    //                         vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                             vertices.data(), vertices.size() * sizeof(Vertex),
+                             vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
@@ -264,36 +316,16 @@ VulkanManagerCore::~VulkanManagerCore() {
 }
 
 void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
+    rprtd.clear();
     renderTargets.clear();
     std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
-                   [this](RenderTargetHint hint) {
+                   [this](const RenderTargetHint &hint) {
                        return createRenderTargetFromHint(device, hint, pipelinelayout.get());
                    });
-}
-
-void recordRenderCommand(vk::CommandBuffer cmdBuf, const RenderTarget &rt, uint32_t index, vk::Buffer buffer, vk::PipelineLayout pipelineLayout, vk::DescriptorSet descSet) {
-    CommandRec cmd{cmdBuf};
-
-    vk::ClearValue clearVal[1];
-    clearVal[0].color.float32[0] = 0.0f;
-    clearVal[0].color.float32[1] = 0.0f;
-    clearVal[0].color.float32[2] = 0.0f;
-    clearVal[0].color.float32[3] = 1.0f;
-
-    vk::RenderPassBeginInfo rpBeginInfo;
-    rpBeginInfo.renderPass = rt.renderpass.get();
-    rpBeginInfo.framebuffer = rt.frameBufs[index].get();
-    rpBeginInfo.renderArea = vk::Rect2D{{0, 0}, rt.extent};
-    rpBeginInfo.clearValueCount = 1;
-    rpBeginInfo.pClearValues = clearVal;
-
-    cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    cmdBuf.bindVertexBuffers(0, {buffer}, {0});
-    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, {descSet}, {});
-    cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rt.pipeline.get());
-
-    cmdBuf.draw(3, 1, 0, 0);
-    cmdBuf.endRenderPass();
+    std::transform(renderTargets.begin(), renderTargets.end(), std::back_inserter(rprtd),
+                   [this](const RenderTarget &rt) {
+                       return defaultRenderProc->prepareRenderTargetDependant(rt);
+                   });
 }
 
 vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
@@ -302,12 +334,23 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
                                     std::initializer_list<vk::Semaphore> signalSemaphores) {
     auto currentFence = renderCmdBufFences[renderCmdBufIndex].get();
     auto currentCmdBuf = renderCmdBufs[renderCmdBufIndex].get();
+    auto currentDescSet = descSets[flightIndex].get();
     renderCmdBufIndex = (renderCmdBufIndex + 1) % renderCmdBufNum;
+    flightIndex = (flightIndex + 1) % coreflightFramesNum;
 
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
 
-    recordRenderCommand(currentCmdBuf, renderTargets[targetIndex], imageIndex, modelVertBuffer.value().getBuffer(), pipelinelayout.get(), descSets[0].get());
+    RenderDetails rd;
+    rd.cmdBuf = currentCmdBuf;
+    rd.vertBuf = modelVertBuffer.value().getBuffer();
+    rd.indexBuf = modelIndexBuffer.value().getBuffer();
+    rd.descSet = currentDescSet;
+    rd.modelsCount = 1;
+    rd.imageIndex = imageIndex;
+    // rd.drawBuf =
+
+    defaultRenderProc->render(rd, renderTargets[targetIndex], rprtd[targetIndex]);
     auto submitCmdBufs = {currentCmdBuf};
 
     vk::SubmitInfo submitInfo;
