@@ -103,18 +103,11 @@ RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHin
     rt.extent = hint.extent;
     rt.format = hint.format;
     rt.imageViews = createImageViewsFromImages(device, hint.images, hint.format);
-    // rt.renderpass = createRenderPass(device, hint.format);
-    // rt.frameBufs = createFrameBufsFromImageView(device, rt.renderpass.get(), hint.extent, {std::ref(rt.imageViews)});
-    // rt.pipeline = createPipeline(device, hint.extent, rt.renderpass.get(), pipelinelayout);
-
     return rt;
 }
 
 class SimpleRenderProc : public IRenderProc {
     vk::Device device;
-    // vk::DescriptorPool pool;
-    // vk::UniqueDescriptorSetLayout descLayout;
-    // std::vector<vk::UniqueDescriptorSet> descSets;
     vk::UniquePipelineLayout pipelinelayout;
     std::vector<vk::UniqueShaderModule> shaders;
 
@@ -211,8 +204,6 @@ class SimpleRenderProc : public IRenderProc {
   public:
     SimpleRenderProc(vk::Device _device, vk::DescriptorSetLayout descLayout)
         : device(_device) {
-        // descLayout = createDescLayout(device);
-        // descSets = createDescSets(device, pool, descLayout.get(), coreflightFramesNum);
         pipelinelayout = createPipelineLayout(device, {descLayout});
 
         auto featVertShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
