@@ -1,3 +1,6 @@
+#ifndef RENDER_HPP
+#define RENDER_HPP
+
 #include <vulkan/vulkan.hpp>
 
 struct RenderTargetHint {
@@ -31,3 +34,5 @@ class IRenderProc {
     virtual void render(const RenderDetails &rd, const RenderTarget &rt, const RenderProcRenderTargetDependant &rprtd) = 0;
     virtual ~IRenderProc() {};
 };
+
+#endif
