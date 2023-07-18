@@ -12,7 +12,7 @@ class VulkanManagerCore {
     vk::UniqueCommandPool renderCmdPool;
     std::vector<vk::UniqueCommandBuffer> renderCmdBufs;
     std::vector<vk::UniqueFence> renderCmdBufFences;
-    uint32_t renderCmdBufIndex = 0, flightIndex = 0;
+    uint32_t flightIndex = 0;
 
     vk::UniqueDescriptorPool descPool;
     vk::UniqueDescriptorSetLayout descLayout;

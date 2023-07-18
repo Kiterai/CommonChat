@@ -5,7 +5,6 @@
 #include "renderer/SimpleRenderProc.hpp"
 using namespace std::string_literals;
 
-constexpr uint32_t renderCmdBufNum = 8;
 constexpr uint32_t coreflightFramesNum = 2;
 
 std::vector<SimpleVertex> vertices = {{0.5, 0.0, 0.0}, {-0.5, 0.0, 0.0}, {0.0, 0.0, 0.5}};
@@ -78,8 +77,8 @@ VulkanManagerCore::VulkanManagerCore(
       device{device},
       graphicsQueue{device.getQueue(queueSet.graphicsQueueFamilyIndex, 0)},
       renderCmdPool{createCommandPool(device, queueSet.graphicsQueueFamilyIndex)},
-      renderCmdBufs{createCommandBuffers(device, renderCmdPool.get(), renderCmdBufNum)},
-      renderCmdBufFences{createFences(device, renderCmdBufNum, true)},
+      renderCmdBufs{createCommandBuffers(device, renderCmdPool.get(), coreflightFramesNum)},
+      renderCmdBufFences{createFences(device, coreflightFramesNum, true)},
       descPool{createDescPool(device)},
       descLayout{createDescLayout(device)},
       descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
@@ -142,10 +141,9 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
                                     std::initializer_list<vk::Semaphore> waitSemaphores,
                                     std::initializer_list<vk::PipelineStageFlags> waitStages,
                                     std::initializer_list<vk::Semaphore> signalSemaphores) {
-    auto currentFence = renderCmdBufFences[renderCmdBufIndex].get();
-    auto currentCmdBuf = renderCmdBufs[renderCmdBufIndex].get();
+    auto currentFence = renderCmdBufFences[flightIndex].get();
+    auto currentCmdBuf = renderCmdBufs[flightIndex].get();
     auto currentDescSet = descSets[flightIndex].get();
-    renderCmdBufIndex = (renderCmdBufIndex + 1) % renderCmdBufNum;
     flightIndex = (flightIndex + 1) % coreflightFramesNum;
 
     device.waitForFences({currentFence}, true, UINT64_MAX);
