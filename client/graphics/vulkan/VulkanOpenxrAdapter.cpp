@@ -130,6 +130,7 @@ VulkanManagerOpenxr::VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSys
     : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
       vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},
       vkQueueSet{chooseSuitableQueueSet(vkPhysDevice.getQueueFamilyProperties()).value()},
+      vkDevice{createDeviceWithOpenxr(xrInst, xrSysId, vkPhysDevice)},
       core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
 
 void VulkanManagerOpenxr::buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains) {
