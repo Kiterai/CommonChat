@@ -126,6 +126,17 @@ std::vector<RenderTargetHint> getRenderTargetHintsWithOpenxr(const std::vector<O
     return v;
 }
 
+std::unique_ptr<xr::impl::InputStructBase> VulkanManagerOpenxr::getXrGraphicsBinding() {
+    xr::GraphicsBindingVulkanKHR graphicsBinding{};
+    graphicsBinding.instance = this->vkInst;
+    graphicsBinding.physicalDevice = this->vkPhysDevice;
+    graphicsBinding.device = this->vkDevice;
+    graphicsBinding.queueFamilyIndex = this->vkQueueSet.graphicsQueueFamilyIndex;
+    graphicsBinding.queueIndex = 0;
+
+    return std::make_unique<xr::GraphicsBindingVulkanKHR>(graphicsBinding);
+}
+
 VulkanManagerOpenxr::VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId)
     : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
       vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},

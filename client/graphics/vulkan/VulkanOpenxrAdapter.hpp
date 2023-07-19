@@ -20,6 +20,7 @@ class VulkanManagerOpenxr : public IGraphics {
     VulkanManagerCore core;
 
   public:
+    std::unique_ptr<xr::impl::InputStructBase> getXrGraphicsBinding();
     VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId);
 
     void buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains);
