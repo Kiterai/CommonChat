@@ -86,7 +86,7 @@ vk::Device createDeviceWithOpenxr(xr::Instance xrInstance, xr::SystemId xrSystem
     return vk::Device{tmpDevice};
 }
 
-std::optional<int64_t> chooseXrSwapchainFormat(const std::vector<int64_t> formats) {
+std::optional<int64_t> VulkanManagerOpenxr::chooseXrSwapchainFormat(const std::vector<int64_t> formats) {
     std::vector<vk::Format> supportFormats = {
         vk::Format::eB8G8R8A8Srgb,
         vk::Format::eR8G8B8A8Srgb,
@@ -113,10 +113,10 @@ std::vector<vk::Image> getImagesFromXrSwapchain(xr::Swapchain swapchain) {
     return vkImages;
 }
 
-std::vector<RenderTargetHint> getRenderTargetHintsWithOpenxr(const std::vector<OpenxrSwapchainDetails> &swapchains) {
+std::vector<RenderTargetHint> getRenderTargetHintsWithOpenxr(const std::vector<OpenxrRenderTargetHint> &swapchains) {
     std::vector<RenderTargetHint> v;
     std::transform(swapchains.begin(), swapchains.end(), std::back_inserter(v),
-                   [](const OpenxrSwapchainDetails &swapchain) {
+                   [](const OpenxrRenderTargetHint &swapchain) {
                        RenderTargetHint hint;
                        hint.format = vk::Format(swapchain.format);
                        hint.extent = vk::Extent2D(swapchain.extent.width, swapchain.extent.height);
@@ -144,7 +144,7 @@ VulkanManagerOpenxr::VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSys
       vkDevice{createDeviceWithOpenxr(xrInst, xrSysId, vkPhysDevice)},
       core{vkInst, vkPhysDevice, vkQueueSet, vkDevice} {}
 
-void VulkanManagerOpenxr::buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains) {
+void VulkanManagerOpenxr::buildRenderTarget(std::vector<OpenxrRenderTargetHint> swapchains) {
     auto hints = getRenderTargetHintsWithOpenxr(swapchains);
     core.recreateRenderTarget(hints);
 }

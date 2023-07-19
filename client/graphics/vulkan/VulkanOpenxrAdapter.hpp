@@ -5,7 +5,7 @@
 #include <openxr/openxr.hpp>
 #include <optional>
 
-struct OpenxrSwapchainDetails {
+struct OpenxrRenderTargetHint {
     xr::Swapchain swapchain;
     int64_t format;
     xr::Extent2Di extent;
@@ -21,7 +21,9 @@ class VulkanManagerOpenxr : public IGraphics {
 
   public:
     std::unique_ptr<xr::impl::InputStructBase> getXrGraphicsBinding();
+    std::optional<int64_t> chooseXrSwapchainFormat(const std::vector<int64_t> formats);
+
     VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId);
 
-    void buildRenderTarget(std::vector<OpenxrSwapchainDetails> swapchains);
+    void buildRenderTarget(std::vector<OpenxrRenderTargetHint> swapchains);
 };
