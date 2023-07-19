@@ -169,8 +169,7 @@ void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, c
     cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, {});
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
 
-    cmdBuf.draw(3, 1, 0, 0);
-    // cmdBuf.drawIndexedIndirect(rd.drawBuf, 0, rd.modelsCount, 20);
+    cmdBuf.drawIndexedIndirect(rd.drawBuf, 0, rd.modelsCount, sizeof(vk::DrawIndexedIndirectCommand));
     cmdBuf.endRenderPass();
 }
 

@@ -7,8 +7,9 @@ using namespace std::string_literals;
 
 constexpr uint32_t coreflightFramesNum = 2;
 
-std::vector<SimpleVertex> vertices = {{0.5, 0.0, 0.0}, {-0.5, 0.0, 0.0}, {0.0, 0.0, 0.5}};
-std::vector<uint32_t> indices = {0, 1, 2};
+std::vector<SimpleVertex> vertices = {{0.1, 0.0, 0.0}, {-0.1, 0.0, 0.0}, {0.0, 0.0, 0.1}, {0.0, 0.0, -0.1}};
+std::vector<uint32_t> indices = {0, 1, 2, 0, 3, 1};
+std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{6, 1, 0, 0, 0}};
 
 struct SceneData {
     glm::mat4x4 view;
@@ -92,6 +93,11 @@ VulkanManagerCore::VulkanManagerCore(
     modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                              indices.data(), indices.size() * sizeof(uint32_t),
                              vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
+    drawIndirectBuffer.emplace(physicalDevice, device,
+                               sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size(),
+                               vk::BufferUsageFlagBits::eIndirectBuffer);
+    std::copy(indirectDraws.begin(), indirectDraws.end(), static_cast<vk::DrawIndexedIndirectCommand *>(drawIndirectBuffer.value().get()));
+    drawIndirectBuffer.value().flush<1>(device, {{{0, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size()}}});
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
@@ -156,7 +162,7 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     rd.descSet = currentDescSet;
     rd.modelsCount = 1;
     rd.imageIndex = imageIndex;
-    // rd.drawBuf =
+    rd.drawBuf = drawIndirectBuffer.value().getBuffer();
 
     defaultRenderProc->render(rd, renderTargets[targetIndex], rprtd[targetIndex]);
     auto submitCmdBufs = {currentCmdBuf};
