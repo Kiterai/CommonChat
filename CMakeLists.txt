@@ -18,10 +18,10 @@ endif()
 find_package(libuv CONFIG REQUIRED)
 find_package(uvw CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
-if(USE_DESKTOP_MODE)
-find_package(glfw3 CONFIG REQUIRED)
 find_package(OpenXR CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+if(USE_DESKTOP_MODE)
+find_package(glfw3 CONFIG REQUIRED)
 endif()
 
 # Client
