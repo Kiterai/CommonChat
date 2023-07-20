@@ -2,6 +2,7 @@
 #define RENDER_HPP
 
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 
 struct RenderTargetHint {
     vk::Format format;
@@ -24,8 +25,22 @@ struct RenderTarget {
 struct RenderDetails {
     vk::CommandBuffer cmdBuf;
     uint32_t imageIndex, modelsCount;
-    vk::Buffer vertBuf, indexBuf, drawBuf;
+
+    // vertex buffers
+    vk::Buffer positionVertBuf, normalVertBuf, tangentVertBuf;
+    vk::Buffer texcoordVertBuf[4], colorVertBuf[4], jointsVertBuf[4], weightsVertBuf[4];
+
+    vk::Buffer indexBuf, drawBuf;
+
+    uint32_t drawBufOffset;
+    uint32_t drawBufStride;
+
     vk::DescriptorSet descSet;
+};
+
+struct SceneData {
+    glm::mat4x4 view;
+    glm::mat4x4 proj;
 };
 
 class IRenderProc {

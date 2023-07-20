@@ -1,4 +1,5 @@
 #include "SimpleRenderProc.hpp"
+#include <glm/glm.hpp>
 
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
@@ -62,7 +63,7 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
 
     vertBindings[0].binding = 0;
     vertBindings[0].inputRate = vk::VertexInputRate::eVertex;
-    vertBindings[0].stride = sizeof(SimpleVertex);
+    vertBindings[0].stride = sizeof(glm::vec3);
     vertAttrs[0].binding = 0;
     vertAttrs[0].location = 0;
     vertAttrs[0].offset = 0;
@@ -164,12 +165,12 @@ void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, c
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    cmdBuf.bindVertexBuffers(0, {rd.vertBuf}, {0});
+    cmdBuf.bindVertexBuffers(0, {rd.positionVertBuf}, {0});
     cmdBuf.bindIndexBuffer(rd.indexBuf, 0, vk::IndexType::eUint32);
     cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, {});
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
 
-    cmdBuf.drawIndexedIndirect(rd.drawBuf, 0, rd.modelsCount, sizeof(vk::DrawIndexedIndirectCommand));
+    cmdBuf.drawIndexedIndirect(rd.drawBuf, rd.drawBufOffset, rd.modelsCount, rd.drawBufStride);
     cmdBuf.endRenderPass();
 }
 

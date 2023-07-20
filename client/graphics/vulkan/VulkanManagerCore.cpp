@@ -1,20 +1,16 @@
 #include "VulkanManagerCore.hpp"
-#include <future>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include "renderer/SimpleRenderProc.hpp"
+#include <fastgltf/parser.hpp>
+#include <future>
+#include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 using namespace std::string_literals;
 
 constexpr uint32_t coreflightFramesNum = 2;
 
-std::vector<SimpleVertex> vertices = {{0.1, 0.0, 0.0}, {-0.1, 0.0, 0.0}, {0.0, 0.0, 0.1}, {0.0, 0.0, -0.1}};
+std::vector<glm::vec3> vertices = {{0.1, 0.0, 0.0}, {-0.1, 0.0, 0.0}, {0.0, 0.0, 0.1}, {0.0, 0.0, -0.1}};
 std::vector<uint32_t> indices = {0, 1, 2, 0, 3, 1};
 std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{6, 1, 0, 0, 0}};
-
-struct SceneData {
-    glm::mat4x4 view;
-    glm::mat4x4 proj;
-};
 
 vk::UniqueDescriptorPool createDescPool(vk::Device device) {
     vk::DescriptorPoolCreateInfo createInfo;
@@ -87,9 +83,9 @@ VulkanManagerCore::VulkanManagerCore(
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])} {
 
-    modelVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                            static_cast<void *>(vertices.data()), vertices.size() * sizeof(SimpleVertex),
-                            vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelPosVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                               static_cast<void *>(vertices.data()), vertices.size() * sizeof(glm::vec3),
+                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                              indices.data(), indices.size() * sizeof(uint32_t),
                              vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
@@ -118,10 +114,6 @@ VulkanManagerCore::VulkanManagerCore(
         writeDescSet.descriptorCount = std::size(descBufInfo);
         writeDescSet.pBufferInfo = descBufInfo;
 
-        SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
-        dat->view = glm::lookAt(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-        dat->proj = glm::perspective(glm::radians(45.0f), 1280.0f / 720.0f, 0.1f, 10.0f);
-
         device.updateDescriptorSets({writeDescSet}, {});
     }
 }
@@ -141,6 +133,12 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
                    [this](const RenderTarget &rt) {
                        return defaultRenderProc->prepareRenderTargetDependant(rt);
                    });
+
+    for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+        SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
+        dat->view = glm::lookAt(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        dat->proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
+    }
 }
 
 vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
@@ -157,12 +155,15 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
 
     RenderDetails rd;
     rd.cmdBuf = currentCmdBuf;
-    rd.vertBuf = modelVertBuffer.value().getBuffer();
+    rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
     rd.indexBuf = modelIndexBuffer.value().getBuffer();
     rd.descSet = currentDescSet;
-    rd.modelsCount = 1;
     rd.imageIndex = imageIndex;
+
+    rd.modelsCount = 1;
     rd.drawBuf = drawIndirectBuffer.value().getBuffer();
+    rd.drawBufOffset = 0;
+    rd.drawBufStride = sizeof(vk::DrawIndexedIndirectCommand);
 
     defaultRenderProc->render(rd, renderTargets[targetIndex], rprtd[targetIndex]);
     auto submitCmdBufs = {currentCmdBuf};
