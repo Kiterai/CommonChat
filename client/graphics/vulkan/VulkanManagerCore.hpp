@@ -30,6 +30,10 @@ class VulkanManagerCore {
     vk::UniqueCommandBuffer assetManageCmdBuf;
     vk::UniqueFence assetManageFence;
     std::optional<ReadonlyBuffer> modelPosVertBuffer;
+    std::optional<ReadonlyBuffer> modelNormVertBuffer;
+    std::optional<ReadonlyBuffer> modelTexcoordVertBuffer;
+    std::optional<ReadonlyBuffer> modelJointsVertBuffer;
+    std::optional<ReadonlyBuffer> modelWeightsVertBuffer;
     std::optional<ReadonlyBuffer> modelIndexBuffer;
     std::optional<CommunicationBuffer> drawIndirectBuffer;
     std::vector<CommunicationBuffer> uniformBuffer;

@@ -8,9 +8,13 @@ using namespace std::string_literals;
 
 constexpr uint32_t coreflightFramesNum = 2;
 
-std::vector<glm::vec3> vertices = {{0.1, 0.0, 0.0}, {-0.1, 0.0, 0.0}, {0.0, 0.0, 0.1}, {0.0, 0.0, -0.1}};
-std::vector<uint32_t> indices = {0, 1, 2, 0, 3, 1};
-std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{6, 1, 0, 0, 0}};
+std::vector<glm::vec3> posVertices = {{-0.5, 0.0, 0.0}, {0.5, 0.0, 0.0}, {-0.5, 0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 1.0, 0.0}, {0.5, 1.0, 0.0}, {-0.5, 1.5, 0.0}, {0.5, 1.5, 0.0}, {-0.5, 2.0, 0.0}, {0.5, 2.0, 0.0}};
+std::vector<glm::vec3> normVertices = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
+std::vector<glm::vec2> texcoordVertices = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}};
+std::vector<glm::i16vec4> jointsVertices = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}};
+std::vector<glm::vec4> weightsVertices = {{1.00, 0.00, 0.0, 0.0}, {1.00, 0.00, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}};
+std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 7, 4, 7, 6, 6, 7, 9, 6, 9, 8};
+std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{24, 1, 0, 0, 0}};
 
 vk::UniqueDescriptorPool createDescPool(vk::Device device) {
     vk::DescriptorPoolCreateInfo createInfo;
@@ -84,7 +88,19 @@ VulkanManagerCore::VulkanManagerCore(
       assetManageFence{std::move(createFences(device, 1, true)[0])} {
 
     modelPosVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(vertices.data()), vertices.size() * sizeof(glm::vec3),
+                               static_cast<void *>(posVertices.data()), posVertices.size() * sizeof(glm::vec3),
+                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelNormVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                               static_cast<void *>(normVertices.data()), normVertices.size() * sizeof(glm::vec3),
+                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelTexcoordVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                               static_cast<void *>(texcoordVertices.data()), texcoordVertices.size() * sizeof(glm::vec2),
+                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelJointsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                               static_cast<void *>(jointsVertices.data()), jointsVertices.size() * sizeof(glm::i16vec4),
+                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+    modelWeightsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
+                               static_cast<void *>(weightsVertices.data()), weightsVertices.size() * sizeof(glm::vec4),
                                vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                              indices.data(), indices.size() * sizeof(uint32_t),
@@ -136,7 +152,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
-        dat->view = glm::lookAt(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        dat->view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
         dat->proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
     }
 }
@@ -156,6 +172,10 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     RenderDetails rd;
     rd.cmdBuf = currentCmdBuf;
     rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
+    rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
+    rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
+    rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
+    rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
     rd.indexBuf = modelIndexBuffer.value().getBuffer();
     rd.descSet = currentDescSet;
     rd.imageIndex = imageIndex;
