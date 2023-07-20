@@ -8,6 +8,13 @@ using namespace std::string_literals;
 
 constexpr uint32_t coreflightFramesNum = 2;
 
+struct ObjectData {
+    alignas(16) glm::mat4 model;
+    alignas(16) glm::mat4 joints[32];
+};
+
+constexpr auto idmat = glm::identity<glm::mat4x4>();
+
 std::vector<glm::vec3> posVertices = {{-0.5, 0.0, 0.0}, {0.5, 0.0, 0.0}, {-0.5, 0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 1.0, 0.0}, {0.5, 1.0, 0.0}, {-0.5, 1.5, 0.0}, {0.5, 1.5, 0.0}, {-0.5, 2.0, 0.0}, {0.5, 2.0, 0.0}};
 std::vector<glm::vec3> normVertices = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
 std::vector<glm::vec2> texcoordVertices = {{0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0}};
@@ -15,6 +22,14 @@ std::vector<glm::i16vec4> jointsVertices = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 1, 0
 std::vector<glm::vec4> weightsVertices = {{1.00, 0.00, 0.0, 0.0}, {1.00, 0.00, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}};
 std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 7, 4, 7, 6, 6, 7, 9, 6, 9, 8};
 std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{24, 1, 0, 0, 0}};
+std::vector<ObjectData> objects = {
+    {glm::translate(idmat, glm::vec3(0, 0, 0)),
+     {
+         idmat,
+         glm::translate(idmat, glm::vec3(0, 1, 0)) *
+             glm::rotate(idmat, glm::half_pi<float>(), glm::vec3(0, 0, 1)) *
+             glm::translate(idmat, glm::vec3(0, -1, 0)),
+     }}};
 
 vk::UniqueDescriptorPool createDescPool(vk::Device device) {
     vk::DescriptorPoolCreateInfo createInfo;
@@ -36,11 +51,19 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
 }
 
 vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
-    vk::DescriptorSetLayoutBinding binding[1];
+    vk::DescriptorSetLayoutBinding binding[3];
     binding[0].binding = 0;
     binding[0].descriptorType = vk::DescriptorType::eUniformBuffer;
     binding[0].descriptorCount = 1;
     binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    binding[1].binding = 1;
+    binding[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    binding[1].descriptorCount = 1;
+    binding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
+    binding[2].binding = 2;
+    binding[2].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[2].descriptorCount = 1;
+    binding[2].stageFlags = vk::ShaderStageFlagBits::eVertex;
 
     vk::DescriptorSetLayoutCreateInfo createInfo;
     createInfo.bindingCount = std::size(binding);
@@ -113,24 +136,47 @@ VulkanManagerCore::VulkanManagerCore(
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
+        objectsBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * objects.size(), vk::BufferUsageFlagBits::eStorageBuffer);
+        std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer.back().get()));
     }
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        vk::WriteDescriptorSet writeDescSet;
-        writeDescSet.dstSet = descSets[i].get();
-        writeDescSet.dstBinding = 0;
-        writeDescSet.dstArrayElement = 0;
-        writeDescSet.descriptorType = vk::DescriptorType::eUniformBuffer;
-
         vk::DescriptorBufferInfo descBufInfo[1];
         descBufInfo[0].buffer = uniformBuffer[i].getBuffer();
         descBufInfo[0].offset = 0;
         descBufInfo[0].range = sizeof(SceneData);
 
-        writeDescSet.descriptorCount = std::size(descBufInfo);
-        writeDescSet.pBufferInfo = descBufInfo;
+        // vk::DescriptorImageInfo descImgInfo[1];
+        // // descImgInfo[0].sampler
+        // descImgInfo[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        // // descImgInfo[0].imageView
 
-        device.updateDescriptorSets({writeDescSet}, {});
+        vk::DescriptorBufferInfo descStorageBufInfo[1];
+        descStorageBufInfo[0].buffer = objectsBuffer[i].getBuffer();
+        descStorageBufInfo[0].offset = 0;
+        descStorageBufInfo[0].range = sizeof(ObjectData) * objects.size();
+
+        vk::WriteDescriptorSet writeDescSet[2];
+        writeDescSet[0].dstSet = descSets[i].get();
+        writeDescSet[0].dstBinding = 0;
+        writeDescSet[0].dstArrayElement = 0;
+        writeDescSet[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+        writeDescSet[0].descriptorCount = std::size(descBufInfo);
+        writeDescSet[0].pBufferInfo = descBufInfo;
+        // writeDescSet[1].dstSet = descSets[i].get();
+        // writeDescSet[1].dstBinding = 1;
+        // writeDescSet[1].dstArrayElement = 0;
+        // writeDescSet[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        // writeDescSet[1].descriptorCount = std::size(descImgInfo);
+        // writeDescSet[1].pImageInfo = descImgInfo;
+        writeDescSet[1].dstSet = descSets[i].get();
+        writeDescSet[1].dstBinding = 2;
+        writeDescSet[1].dstArrayElement = 0;
+        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[1].descriptorCount = std::size(descStorageBufInfo);
+        writeDescSet[1].pBufferInfo = descStorageBufInfo;
+
+        device.updateDescriptorSets(writeDescSet, {});
     }
 }
 

@@ -12,40 +12,22 @@ layout(location = 2) in vec2 inTexcoord;
 layout(location = 3) in uvec4 inJoints;
 layout(location = 4) in vec4 inWeight;
 
-mat4 u_jointMat[2] = {
-    mat4(
-        vec4(1.0, 0.0, 0.0, 0.0),
-        vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0, 0.0, 1.0, 0.0),
-        vec4(0.0, 0.0, 0.0, 1.0)
-    ),
-    mat4(
-        vec4(1.0, 0.0, 0.0, 0.0),
-        vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0, 0.0, 1.0, 0.0),
-        vec4(0.0, 1.0, 0.0, 1.0)
-    ) * 
-    mat4(
-        vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(-1.0, 0.0, 0.0, 0.0),
-        vec4(0.0, 0.0, 1.0, 0.0),
-        vec4(0.0, 0.0, 0.0, 1.0)
-    ) * 
-    mat4(
-        vec4(1.0, 0.0, 0.0, 0.0),
-        vec4(0.0, 1.0, 0.0, 0.0),
-        vec4(0.0, 0.0, 1.0, 0.0),
-        vec4(0.0,-1.0, 0.0, 1.0)
-    )
+struct ObjectData{
+	mat4 model;
+    mat4 joints[32];
 };
+
+layout(set = 0, binding = 2) readonly buffer ObjectBuffer{
+	ObjectData objects[];
+} objectBuffer;
 
 void main() {
     mat4 skinMat = 
-        inWeight.x * u_jointMat[inJoints.x] +
-        inWeight.y * u_jointMat[inJoints.y] +
-        inWeight.z * u_jointMat[inJoints.z] +
-        inWeight.w * u_jointMat[inJoints.w];
+        inWeight.x * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.x] +
+        inWeight.y * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.y] +
+        inWeight.z * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.z] +
+        inWeight.w * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.w];
 
-    vec4 worldPos = skinMat * vec4(inPos, 1.0);
+    vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * skinMat * vec4(inPos, 1.0);
     gl_Position = camera.proj * camera.view * worldPos;
 }

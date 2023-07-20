@@ -37,6 +37,7 @@ class VulkanManagerCore {
     std::optional<ReadonlyBuffer> modelIndexBuffer;
     std::optional<CommunicationBuffer> drawIndirectBuffer;
     std::vector<CommunicationBuffer> uniformBuffer;
+    std::vector<CommunicationBuffer> objectsBuffer;
 
   public:
     VulkanManagerCore(
