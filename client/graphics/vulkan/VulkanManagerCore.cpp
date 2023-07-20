@@ -91,17 +91,17 @@ VulkanManagerCore::VulkanManagerCore(
                                static_cast<void *>(posVertices.data()), posVertices.size() * sizeof(glm::vec3),
                                vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelNormVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(normVertices.data()), normVertices.size() * sizeof(glm::vec3),
-                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+                                static_cast<void *>(normVertices.data()), normVertices.size() * sizeof(glm::vec3),
+                                vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelTexcoordVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(texcoordVertices.data()), texcoordVertices.size() * sizeof(glm::vec2),
-                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+                                    static_cast<void *>(texcoordVertices.data()), texcoordVertices.size() * sizeof(glm::vec2),
+                                    vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelJointsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(jointsVertices.data()), jointsVertices.size() * sizeof(glm::i16vec4),
-                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+                                  static_cast<void *>(jointsVertices.data()), jointsVertices.size() * sizeof(glm::i16vec4),
+                                  vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelWeightsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(weightsVertices.data()), weightsVertices.size() * sizeof(glm::vec4),
-                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
+                                   static_cast<void *>(weightsVertices.data()), weightsVertices.size() * sizeof(glm::vec4),
+                                   vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
     modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                              indices.data(), indices.size() * sizeof(uint32_t),
                              vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
