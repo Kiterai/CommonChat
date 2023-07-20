@@ -1,3 +1,6 @@
+#ifndef VULKAN_MANAGER_CORE_HPP
+#define VULKAN_MANAGER_CORE_HPP
+
 #include "Render.hpp"
 #include "Helper.hpp"
 #include "Buffer.hpp"
@@ -46,3 +49,5 @@ class VulkanManagerCore {
                      std::initializer_list<vk::PipelineStageFlags> waitStages,
                      std::initializer_list<vk::Semaphore> signalSemaphores);
 };
+
+#endif VULKAN_MANAGER_CORE_HPP
