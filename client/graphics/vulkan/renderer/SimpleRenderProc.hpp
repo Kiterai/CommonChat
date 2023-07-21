@@ -5,10 +5,6 @@
 #include "../Helper.hpp"
 #include <future>
 
-struct SimpleVertex {
-    float x, y, z;
-};
-
 class SimpleRenderProc : public IRenderProc {
     vk::Device device;
     vk::UniquePipelineLayout pipelinelayout;

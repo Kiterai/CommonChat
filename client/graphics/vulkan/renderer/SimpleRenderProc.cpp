@@ -1,4 +1,5 @@
 #include "SimpleRenderProc.hpp"
+#include <glm/glm.hpp>
 
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
     vk::AttachmentDescription attachments[1];
@@ -57,16 +58,44 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
     viewportState.scissorCount = 1;
     viewportState.pScissors = scissors;
 
-    vk::VertexInputBindingDescription vertBindings[1];
-    vk::VertexInputAttributeDescription vertAttrs[1];
+    vk::VertexInputBindingDescription vertBindings[5];
+    vk::VertexInputAttributeDescription vertAttrs[5];
 
     vertBindings[0].binding = 0;
     vertBindings[0].inputRate = vk::VertexInputRate::eVertex;
-    vertBindings[0].stride = sizeof(SimpleVertex);
+    vertBindings[0].stride = sizeof(glm::vec3);
     vertAttrs[0].binding = 0;
     vertAttrs[0].location = 0;
     vertAttrs[0].offset = 0;
     vertAttrs[0].format = vk::Format::eR32G32B32Sfloat;
+    vertBindings[1].binding = 1;
+    vertBindings[1].inputRate = vk::VertexInputRate::eVertex;
+    vertBindings[1].stride = sizeof(glm::vec3);
+    vertAttrs[1].binding = 1;
+    vertAttrs[1].location = 1;
+    vertAttrs[1].offset = 0;
+    vertAttrs[1].format = vk::Format::eR32G32B32Sfloat;
+    vertBindings[2].binding = 2;
+    vertBindings[2].inputRate = vk::VertexInputRate::eVertex;
+    vertBindings[2].stride = sizeof(glm::vec2);
+    vertAttrs[2].binding = 2;
+    vertAttrs[2].location = 2;
+    vertAttrs[2].offset = 0;
+    vertAttrs[2].format = vk::Format::eR32G32Sfloat;
+    vertBindings[3].binding = 3;
+    vertBindings[3].inputRate = vk::VertexInputRate::eVertex;
+    vertBindings[3].stride = sizeof(glm::i16vec4);
+    vertAttrs[3].binding = 3;
+    vertAttrs[3].location = 3;
+    vertAttrs[3].offset = 0;
+    vertAttrs[3].format = vk::Format::eR16G16B16A16Uint;
+    vertBindings[4].binding = 4;
+    vertBindings[4].inputRate = vk::VertexInputRate::eVertex;
+    vertBindings[4].stride = sizeof(glm::vec4);
+    vertAttrs[4].binding = 4;
+    vertAttrs[4].location = 4;
+    vertAttrs[4].offset = 0;
+    vertAttrs[4].format = vk::Format::eR32G32B32A32Sfloat;
 
     vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
     vertexInputInfo.vertexBindingDescriptionCount = std::size(vertBindings);
@@ -148,7 +177,6 @@ RenderProcRenderTargetDependant SimpleRenderProc::prepareRenderTargetDependant(c
 
 void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, const RenderProcRenderTargetDependant &rprtd) {
     const auto cmdBuf = rd.cmdBuf;
-    CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
     clearVal[0].color.float32[0] = 0.0f;
@@ -164,12 +192,14 @@ void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, c
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
-    cmdBuf.bindVertexBuffers(0, {rd.vertBuf}, {0});
+    cmdBuf.bindVertexBuffers(0,
+                             {rd.positionVertBuf, rd.normalVertBuf, rd.texcoordVertBuf[0], rd.jointsVertBuf[0], rd.weightsVertBuf[0]},
+                             {0, 0, 0, 0, 0});
     cmdBuf.bindIndexBuffer(rd.indexBuf, 0, vk::IndexType::eUint32);
-    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, {});
+    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, rd.dynamicOfs);
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
 
-    cmdBuf.drawIndexedIndirect(rd.drawBuf, 0, rd.modelsCount, sizeof(vk::DrawIndexedIndirectCommand));
+    cmdBuf.drawIndexedIndirect(rd.drawBuf, rd.drawBufOffset, rd.modelsCount, rd.drawBufStride);
     cmdBuf.endRenderPass();
 }
 

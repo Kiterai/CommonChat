@@ -60,9 +60,10 @@ vk::Device createDeviceWithOpenxr(xr::Instance xrInstance, xr::SystemId xrSystem
     std::vector<const char *> exts;
     std::vector<const char *> layers;
 
-    vk::PhysicalDeviceFeatures features{};
+    auto devFeats = physicalDevice.getFeatures();
 
     vk::DeviceCreateInfo createInfo{};
+    createInfo.pEnabledFeatures = &devFeats;
     createInfo.queueCreateInfoCount = queueInfo.size();
     createInfo.pQueueCreateInfos = queueInfo.data();
     createInfo.enabledExtensionCount = exts.size();

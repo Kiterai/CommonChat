@@ -5,9 +5,10 @@
 
 class Gui {
   private:
-    XrManager xrManger;
 #ifdef USE_DESKTOP_MODE
     DesktopGuiSystem desktopGuiSys;
+#else
+    XrManager xrManger;
 #endif
 
   public:

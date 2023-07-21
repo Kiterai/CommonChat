@@ -88,8 +88,11 @@ vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, c
     float queuePriorities[] = {1.0};
     queueInfo.pQueuePriorities = queuePriorities;
     queueInfos.push_back(queueInfo);
+    
+    auto devFeats = physicalDevice.getFeatures();
 
     vk::DeviceCreateInfo deviceCreateInfo;
+    deviceCreateInfo.pEnabledFeatures = &devFeats;
     deviceCreateInfo.enabledExtensionCount = exts.size();
     deviceCreateInfo.ppEnabledExtensionNames = exts.data();
     deviceCreateInfo.enabledLayerCount = layers.size();
@@ -108,6 +111,7 @@ vk::PhysicalDevice chooseSuitablePhysicalDeviceWithGlfw(vk::Instance instance, v
     for (const auto &physicalDevice : physicalDevices) {
         auto queueProps = chooseSuitableQueueSet(physicalDevice.getQueueFamilyProperties());
         auto devExts = physicalDevice.enumerateDeviceExtensionProperties();
+        auto devFeats = physicalDevice.getFeatures();
 
         auto swapchainExtSupport = std::find_if(devExts.begin(), devExts.end(), [](vk::ExtensionProperties extProp) {
                                        return std::string_view(extProp.extensionName.data()) == VK_KHR_SWAPCHAIN_EXTENSION_NAME;
@@ -117,7 +121,7 @@ vk::PhysicalDevice chooseSuitablePhysicalDeviceWithGlfw(vk::Instance instance, v
             !physicalDevice.getSurfaceFormatsKHR(surface).empty() ||
             !physicalDevice.getSurfacePresentModesKHR(surface).empty();
 
-        if (queueProps.has_value() && swapchainExtSupport && supportsSurface) {
+        if (queueProps.has_value() && swapchainExtSupport && supportsSurface && devFeats.multiDrawIndirect) {
             suitablePhysicalDevice = physicalDevice;
             break;
         }
@@ -247,7 +251,7 @@ void VulkanManagerGlfw::render() {
         throw std::runtime_error("failed to acquire image");
 
     frameFlightFence[flightFrameIndex] =
-        core.render(0, acquireImgResult.value,
+        core.render(acquireImgResult.value,
                     {imageAcquiredSemaphores[flightFrameIndex].get()},
                     {vk::PipelineStageFlagBits::eColorAttachmentOutput},
                     {imageRenderedSemaphores[flightFrameIndex].get()});

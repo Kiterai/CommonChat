@@ -1,6 +1,10 @@
+#ifndef VULKAN_MANAGER_CORE_HPP
+#define VULKAN_MANAGER_CORE_HPP
+
 #include "Render.hpp"
 #include "Helper.hpp"
 #include "Buffer.hpp"
+#include "Image.hpp"
 #include <vulkan/vulkan.hpp>
 
 class VulkanManagerCore {
@@ -26,10 +30,20 @@ class VulkanManagerCore {
 
     vk::UniqueCommandBuffer assetManageCmdBuf;
     vk::UniqueFence assetManageFence;
-    std::optional<ReadonlyBuffer> modelVertBuffer;
+    std::optional<ReadonlyBuffer> modelPosVertBuffer;
+    std::optional<ReadonlyBuffer> modelNormVertBuffer;
+    std::optional<ReadonlyBuffer> modelTexcoordVertBuffer;
+    std::optional<ReadonlyBuffer> modelJointsVertBuffer;
+    std::optional<ReadonlyBuffer> modelWeightsVertBuffer;
     std::optional<ReadonlyBuffer> modelIndexBuffer;
     std::optional<CommunicationBuffer> drawIndirectBuffer;
-    std::vector<CommunicationBuffer> uniformBuffer;
+    std::optional<CommunicationBuffer> uniformBuffer;
+    std::vector<CommunicationBuffer> objectsBuffer;
+    std::vector<CommunicationBuffer> jointsBuffer;
+
+    std::optional<ReadonlyImage> testTexture;
+    std::optional<vk::UniqueImageView> testTextureImgView;
+    vk::UniqueSampler testSampler;
 
   public:
     VulkanManagerCore(
@@ -41,8 +55,10 @@ class VulkanManagerCore {
 
     void recreateRenderTarget(std::vector<RenderTargetHint> hints);
 
-    vk::Fence render(uint32_t targetIndex, uint32_t imageIndex,
+    vk::Fence render(uint32_t imageIndex,
                      std::initializer_list<vk::Semaphore> waitSemaphores,
                      std::initializer_list<vk::PipelineStageFlags> waitStages,
                      std::initializer_list<vk::Semaphore> signalSemaphores);
 };
+
+#endif VULKAN_MANAGER_CORE_HPP
