@@ -16,19 +16,25 @@ layout(location = 2) out vec2 outTexcoord;
 
 struct ObjectData{
 	mat4 model;
-    mat4 joints[32];
+    uint jointIndex;
+    uint textureIndex;
 };
 
 layout(set = 0, binding = 2) readonly buffer ObjectBuffer{
 	ObjectData objects[];
 } objectBuffer;
 
+layout(set = 0, binding = 3) readonly buffer JointBuffer{
+	mat4 joints[];
+} jointBuffer;
+
 void main() {
+    uint jointIndex = objectBuffer.objects[gl_InstanceIndex].jointIndex;
     mat4 skinMat = 
-        inWeight.x * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.x] +
-        inWeight.y * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.y] +
-        inWeight.z * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.z] +
-        inWeight.w * objectBuffer.objects[gl_InstanceIndex].joints[inJoints.w];
+        inWeight.x * jointBuffer.joints[jointIndex + inJoints.x] +
+        inWeight.y * jointBuffer.joints[jointIndex + inJoints.y] +
+        inWeight.z * jointBuffer.joints[jointIndex + inJoints.z] +
+        inWeight.w * jointBuffer.joints[jointIndex + inJoints.w];
 
     vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * skinMat * vec4(inPos, 1.0);
     gl_Position = camera.proj * camera.view * worldPos;

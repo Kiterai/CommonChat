@@ -39,6 +39,7 @@ class VulkanManagerCore {
     std::optional<CommunicationBuffer> drawIndirectBuffer;
     std::vector<CommunicationBuffer> uniformBuffer;
     std::vector<CommunicationBuffer> objectsBuffer;
+    std::vector<CommunicationBuffer> jointsBuffer;
 
     std::optional<ReadonlyImage> testTexture;
     std::optional<vk::UniqueImageView> testTextureImgView;
