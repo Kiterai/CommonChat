@@ -36,6 +36,8 @@ struct RenderDetails {
     uint32_t drawBufStride;
 
     vk::DescriptorSet descSet;
+
+    std::array<uint32_t, 1> dynamicOfs;
 };
 
 struct SceneData {

@@ -197,7 +197,7 @@ void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, c
                              {rd.positionVertBuf, rd.normalVertBuf, rd.texcoordVertBuf[0], rd.jointsVertBuf[0], rd.weightsVertBuf[0]},
                              {0, 0, 0, 0, 0});
     cmdBuf.bindIndexBuffer(rd.indexBuf, 0, vk::IndexType::eUint32);
-    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, {});
+    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, rd.dynamicOfs);
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
 
     cmdBuf.drawIndexedIndirect(rd.drawBuf, rd.drawBufOffset, rd.modelsCount, rd.drawBufStride);

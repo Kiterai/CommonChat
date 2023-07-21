@@ -35,7 +35,8 @@ std::vector<ObjectData> objects = {
         glm::translate(idmat, glm::vec3(-1, 0, 0)),
         0,
         0,
-    },};
+    },
+};
 
 std::vector<glm::mat4> joints = {
     idmat,
@@ -70,7 +71,7 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
 vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
     vk::DescriptorSetLayoutBinding binding[4];
     binding[0].binding = 0;
-    binding[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+    binding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
     binding[0].descriptorCount = 1;
     binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
     binding[1].binding = 1;
@@ -190,18 +191,38 @@ VulkanManagerCore::VulkanManagerCore(
     testSampler = createSampler(device);
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
         objectsBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * objects.size(), vk::BufferUsageFlagBits::eStorageBuffer);
         std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer.back().get()));
         jointsBuffer.emplace_back(physicalDevice, device, sizeof(glm::mat4) * joints.size(), vk::BufferUsageFlagBits::eStorageBuffer);
         std::copy(joints.begin(), joints.end(), static_cast<glm::mat4 *>(jointsBuffer.back().get()));
     }
+}
+
+VulkanManagerCore::~VulkanManagerCore() {
+    graphicsQueue.waitIdle();
+}
+
+void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
+    rprtd.clear();
+    renderTargets.clear();
+    std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
+                   [this](const RenderTargetHint &hint) {
+                       return createRenderTargetFromHint(device, hint, pipelinelayout.get());
+                   });
+    std::transform(renderTargets.begin(), renderTargets.end(), std::back_inserter(rprtd),
+                   [this](const RenderTarget &rt) {
+                       return defaultRenderProc->prepareRenderTargetDependant(rt);
+                   });
+
+    uniformBuffer.reset();
+    uniformBuffer.emplace(physicalDevice, device, sizeof(SceneData) * renderTargets.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eUniformBuffer);
+    SceneData *dat = static_cast<SceneData *>(uniformBuffer->get());
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        vk::DescriptorBufferInfo descBufInfo[1];
-        descBufInfo[0].buffer = uniformBuffer[i].getBuffer();
-        descBufInfo[0].offset = 0;
-        descBufInfo[0].range = sizeof(SceneData);
+        vk::DescriptorBufferInfo descUniformBufInfo[1];
+        descUniformBufInfo[0].buffer = uniformBuffer->getBuffer();
+        descUniformBufInfo[0].offset = 0;
+        descUniformBufInfo[0].range = sizeof(SceneData);
 
         vk::DescriptorImageInfo descImgInfo[1];
         descImgInfo[0].sampler = testSampler.get();
@@ -222,9 +243,9 @@ VulkanManagerCore::VulkanManagerCore(
         writeDescSet[0].dstSet = descSets[i].get();
         writeDescSet[0].dstBinding = 0;
         writeDescSet[0].dstArrayElement = 0;
-        writeDescSet[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-        writeDescSet[0].descriptorCount = std::size(descBufInfo);
-        writeDescSet[0].pBufferInfo = descBufInfo;
+        writeDescSet[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+        writeDescSet[0].descriptorCount = std::size(descUniformBufInfo);
+        writeDescSet[0].pBufferInfo = descUniformBufInfo;
         writeDescSet[1].dstSet = descSets[i].get();
         writeDescSet[1].dstBinding = 1;
         writeDescSet[1].dstArrayElement = 0;
@@ -246,28 +267,12 @@ VulkanManagerCore::VulkanManagerCore(
 
         device.updateDescriptorSets(writeDescSet, {});
     }
-}
 
-VulkanManagerCore::~VulkanManagerCore() {
-    graphicsQueue.waitIdle();
-}
-
-void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints) {
-    rprtd.clear();
-    renderTargets.clear();
-    std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
-                   [this](const RenderTargetHint &hint) {
-                       return createRenderTargetFromHint(device, hint, pipelinelayout.get());
-                   });
-    std::transform(renderTargets.begin(), renderTargets.end(), std::back_inserter(rprtd),
-                   [this](const RenderTarget &rt) {
-                       return defaultRenderProc->prepareRenderTargetDependant(rt);
-                   });
-
-    for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        SceneData *dat = static_cast<SceneData *>(uniformBuffer[i].get());
-        dat->view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-        dat->proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
+    for (uint32_t j = 0; j < renderTargets.size(); j++) {
+        for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+            dat[j * coreflightFramesNum + i].proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
+        }
     }
 }
 
@@ -278,7 +283,6 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     auto currentFence = renderCmdBufFences[flightIndex].get();
     auto currentCmdBuf = renderCmdBufs[flightIndex].get();
     auto currentDescSet = descSets[flightIndex].get();
-    flightIndex = (flightIndex + 1) % coreflightFramesNum;
 
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
@@ -292,6 +296,7 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
     rd.indexBuf = modelIndexBuffer.value().getBuffer();
     rd.descSet = currentDescSet;
+    rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
     rd.imageIndex = imageIndex;
 
     rd.modelsCount = indirectDraws.size();
@@ -314,6 +319,8 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     submitInfo.pSignalSemaphores = signalSemaphores.begin();
 
     graphicsQueue.submit({submitInfo}, currentFence);
+
+    flightIndex = (flightIndex + 1) % coreflightFramesNum;
 
     return currentFence;
 }
