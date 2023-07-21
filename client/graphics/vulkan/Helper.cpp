@@ -18,27 +18,29 @@ std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueF
     return props;
 }
 
+vk::UniqueImageView createImageViewFromImage(vk::Device device, const vk::Image &image, vk::Format format, uint32_t arrayNum) {
+    vk::ImageViewCreateInfo imgViewCreateInfo;
+    imgViewCreateInfo.image = image;
+    imgViewCreateInfo.viewType = vk::ImageViewType::e2D;
+    imgViewCreateInfo.format = format;
+    imgViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
+    imgViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
+    imgViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
+    imgViewCreateInfo.components.a = vk::ComponentSwizzle::eIdentity;
+    imgViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+    imgViewCreateInfo.subresourceRange.baseMipLevel = 0;
+    imgViewCreateInfo.subresourceRange.levelCount = 1;
+    imgViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+    imgViewCreateInfo.subresourceRange.layerCount = arrayNum;
+
+    return device.createImageViewUnique(imgViewCreateInfo);
+}
+
 std::vector<vk::UniqueImageView> createImageViewsFromImages(vk::Device device, const std::vector<vk::Image> &images, vk::Format format) {
     std::vector<vk::UniqueImageView> imageViews(images.size());
 
     for (uint32_t i = 0; i < images.size(); i++) {
-        const auto &image = images[i];
-
-        vk::ImageViewCreateInfo imgViewCreateInfo;
-        imgViewCreateInfo.image = image;
-        imgViewCreateInfo.viewType = vk::ImageViewType::e2D;
-        imgViewCreateInfo.format = format;
-        imgViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
-        imgViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
-        imgViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
-        imgViewCreateInfo.components.a = vk::ComponentSwizzle::eIdentity;
-        imgViewCreateInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
-        imgViewCreateInfo.subresourceRange.baseMipLevel = 0;
-        imgViewCreateInfo.subresourceRange.levelCount = 1;
-        imgViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-        imgViewCreateInfo.subresourceRange.layerCount = 1;
-
-        imageViews[i] = device.createImageViewUnique(imgViewCreateInfo);
+        imageViews[i] = createImageViewFromImage(device, images[i], format, 1);
     }
 
     return imageViews;
@@ -174,6 +176,16 @@ void writeByBufferToImageCopy(vk::Device device, vk::CommandBuffer cmdBuf, vk::Q
 
     {
         vk::ImageMemoryBarrier barrior;
+        barrior.oldLayout = vk::ImageLayout::eUndefined;
+        barrior.newLayout = vk::ImageLayout::eTransferDstOptimal;
+        barrior.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrior.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrior.image = dstImg;
+        barrior.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        barrior.subresourceRange.baseMipLevel = 0;
+        barrior.subresourceRange.levelCount = 1;
+        barrior.subresourceRange.baseArrayLayer = 0;
+        barrior.subresourceRange.layerCount = arrayNum;
         barrior.srcAccessMask = {};
         barrior.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
         cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer,
@@ -197,6 +209,16 @@ void writeByBufferToImageCopy(vk::Device device, vk::CommandBuffer cmdBuf, vk::Q
 
     {
         vk::ImageMemoryBarrier barrior;
+        barrior.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+        barrior.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        barrior.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrior.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrior.image = dstImg;
+        barrior.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+        barrior.subresourceRange.baseMipLevel = 0;
+        barrior.subresourceRange.levelCount = 1;
+        barrior.subresourceRange.baseArrayLayer = 0;
+        barrior.subresourceRange.layerCount = arrayNum;
         barrior.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
         barrior.dstAccessMask = vk::AccessFlagBits::eShaderRead;
         cmdBuf.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader,

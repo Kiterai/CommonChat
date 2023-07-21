@@ -16,6 +16,7 @@ struct SwapchainDetails {
 };
 
 std::optional<UsingQueueSet> chooseSuitableQueueSet(const std::vector<vk::QueueFamilyProperties> queueProps);
+vk::UniqueImageView createImageViewFromImage(vk::Device device, const vk::Image &image, vk::Format format, uint32_t arrayNum);
 std::vector<vk::UniqueImageView> createImageViewsFromImages(vk::Device device, const std::vector<vk::Image> &images, vk::Format format);
 std::vector<vk::UniqueFramebuffer> createFrameBufsFromImageView(vk::Device device, vk::RenderPass renderpass, vk::Extent2D extent, const std::vector<std::reference_wrapper<const std::vector<vk::UniqueImageView>>> imageViews);
 
