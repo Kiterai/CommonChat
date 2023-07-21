@@ -4,6 +4,7 @@
 #include "Render.hpp"
 #include "Helper.hpp"
 #include "Buffer.hpp"
+#include "Image.hpp"
 #include <vulkan/vulkan.hpp>
 
 class VulkanManagerCore {
@@ -38,6 +39,8 @@ class VulkanManagerCore {
     std::optional<CommunicationBuffer> drawIndirectBuffer;
     std::vector<CommunicationBuffer> uniformBuffer;
     std::vector<CommunicationBuffer> objectsBuffer;
+
+    std::optional<ReadonlyImage> testTexture;
 
   public:
     VulkanManagerCore(

@@ -4,6 +4,7 @@
 #include <future>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
+#include <stb_image.h>
 using namespace std::string_literals;
 
 constexpr uint32_t coreflightFramesNum = 2;
@@ -133,6 +134,15 @@ VulkanManagerCore::VulkanManagerCore(
                                vk::BufferUsageFlagBits::eIndirectBuffer);
     std::copy(indirectDraws.begin(), indirectDraws.end(), static_cast<vk::DrawIndexedIndirectCommand *>(drawIndirectBuffer.value().get()));
     drawIndirectBuffer.value().flush<1>(device, {{{0, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size()}}});
+
+    {
+        int texWidth, texHeight, texChannels;
+        auto pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        // testTexture.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(), pixels, vk::Extent3D{uint32_t{texWidth}, uint32_t{texHeight}, 1}, uint32_t(1), vk::ImageUsageFlagBits::eSampled, assetManageFence.get());
+
+        stbi_image_free(pixels);
+    }
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
