@@ -10,9 +10,10 @@ using namespace std::string_literals;
 constexpr uint32_t coreflightFramesNum = 2;
 
 struct ObjectData {
-    alignas(16) glm::mat4 modelMat;
-    alignas(16) glm::uint32_t jointIndex;
-    alignas(16) glm::uint32_t textureIndex;
+    glm::mat4 modelMat;
+    glm::uint32_t jointIndex;
+    glm::uint32_t textureIndex;
+    glm::uint32_t dummy[2];
 };
 
 constexpr auto idmat = glm::identity<glm::mat4x4>();
@@ -23,18 +24,18 @@ std::vector<glm::vec2> texcoordVertices = {{0.0, 0.0}, {1.0, 0.0}, {0.0, 0.25}, 
 std::vector<glm::i16vec4> jointsVertices = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}};
 std::vector<glm::vec4> weightsVertices = {{1.00, 0.00, 0.0, 0.0}, {1.00, 0.00, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}};
 std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 7, 4, 7, 6, 6, 7, 9, 6, 9, 8};
-std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{24, 1, 0, 0, 0}};
+std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{24, 1, 0, 0, 0}, {24, 1, 0, 0, 1}};
 std::vector<ObjectData> objects = {
-    {
-        glm::translate(idmat, glm::vec3(-1, 0, 0)),
-        0,
-        0,
-    },
     {
         glm::translate(idmat, glm::vec3(1, 0, 0)),
         2,
         0,
-    }};
+    },
+    {
+        glm::translate(idmat, glm::vec3(-1, 0, 0)),
+        0,
+        0,
+    },};
 
 std::vector<glm::mat4> joints = {
     idmat,

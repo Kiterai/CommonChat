@@ -18,6 +18,7 @@ struct ObjectData{
 	mat4 model;
     uint jointIndex;
     uint textureIndex;
+    uint dummy[2];
 };
 
 layout(set = 0, binding = 2) readonly buffer ObjectBuffer{
