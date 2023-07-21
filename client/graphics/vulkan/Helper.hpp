@@ -53,3 +53,8 @@ struct CommandExec {
         Submit({cmdBuf}, queue, fence);
     }
 };
+
+std::optional<uint32_t> findMemoryTypeIndex(vk::PhysicalDevice physDevice, std::optional<vk::MemoryPropertyFlags> memFlagReq, std::optional<vk::MemoryRequirements> memReq);
+void writeByMemoryMapping(vk::Device device, vk::DeviceMemory memory, void *src, size_t sz, vk::DeviceSize dstOffset);
+void writeByBufferCopy(vk::Device device, vk::CommandBuffer cmdBuf, vk::Queue queue, vk::Buffer srcBuf, vk::Buffer dstBuf, vk::DeviceSize sz, vk::DeviceSize srcOffset, vk::DeviceSize dstOffset, vk::Fence fence);
+void writeByBufferToImageCopy(vk::Device device, vk::CommandBuffer cmdBuf, vk::Queue queue, vk::Buffer srcBuf, vk::Image dstImg, vk::Extent3D extent, uint32_t arrayNum, vk::DeviceSize srcOffset, vk::Fence fence);
