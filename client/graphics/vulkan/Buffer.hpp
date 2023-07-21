@@ -1,3 +1,6 @@
+#ifndef VULKAN_BUFFER_HPP
+#define VULKAN_BUFFER_HPP
+
 #include <array>
 #include <optional>
 #include <vulkan/vulkan.hpp>
@@ -43,3 +46,5 @@ class CommunicationBuffer : public Buffer {
         device.flushMappedMemoryRanges(vkranges.size(), vkranges.data());
     }
 };
+
+#endif VULKAN_BUFFER_HPP
