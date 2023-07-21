@@ -12,6 +12,8 @@ layout(location = 2) in vec2 inTexcoord;
 layout(location = 3) in uvec4 inJoints;
 layout(location = 4) in vec4 inWeight;
 
+layout(location = 2) out vec2 outTexcoord;
+
 struct ObjectData{
 	mat4 model;
     mat4 joints[32];
@@ -30,4 +32,6 @@ void main() {
 
     vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * skinMat * vec4(inPos, 1.0);
     gl_Position = camera.proj * camera.view * worldPos;
+
+    outTexcoord = inTexcoord;
 }
