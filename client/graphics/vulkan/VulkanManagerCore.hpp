@@ -41,6 +41,8 @@ class VulkanManagerCore {
     std::vector<CommunicationBuffer> objectsBuffer;
 
     std::optional<ReadonlyImage> testTexture;
+    std::optional<vk::UniqueImageView> testTextureImgView;
+    vk::UniqueSampler testSampler;
 
   public:
     VulkanManagerCore(

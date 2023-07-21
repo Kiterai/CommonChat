@@ -91,6 +91,27 @@ RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHin
     return rt;
 }
 
+vk::UniqueSampler createSampler(vk::Device device) {
+    vk::SamplerCreateInfo createInfo;
+    createInfo.magFilter = vk::Filter::eLinear;
+    createInfo.minFilter = vk::Filter::eLinear;
+    createInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+    createInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+    createInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+    createInfo.anisotropyEnable = false;
+    createInfo.maxAnisotropy = 1.0f;
+    createInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+    createInfo.unnormalizedCoordinates = false;
+    createInfo.compareEnable = false;
+    createInfo.compareOp = vk::CompareOp::eAlways;
+    createInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+    createInfo.mipLodBias = 0.0f;
+    createInfo.minLod = 0.0f;
+    createInfo.maxLod = 0.0f;
+
+    return device.createSamplerUnique(createInfo);
+}
+
 VulkanManagerCore::VulkanManagerCore(
     vk::Instance instance,
     vk::PhysicalDevice physicalDevice,
@@ -139,10 +160,14 @@ VulkanManagerCore::VulkanManagerCore(
         int texWidth, texHeight, texChannels;
         auto pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
-        // testTexture.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(), pixels, vk::Extent3D{uint32_t{texWidth}, uint32_t{texHeight}, 1}, uint32_t(1), vk::ImageUsageFlagBits::eSampled, assetManageFence.get());
+        testTexture.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(), pixels,
+                            vk::Extent3D{static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1}, 1,
+                            vk::ImageUsageFlagBits::eSampled, assetManageFence.get());
 
         stbi_image_free(pixels);
     }
+    testTextureImgView = createImageViewFromImage(device, testTexture->getImage(), vk::Format::eR8G8B8A8Srgb, 1);
+    testSampler = createSampler(device);
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         uniformBuffer.emplace_back(physicalDevice, device, sizeof(SceneData), vk::BufferUsageFlagBits::eUniformBuffer);
@@ -156,35 +181,35 @@ VulkanManagerCore::VulkanManagerCore(
         descBufInfo[0].offset = 0;
         descBufInfo[0].range = sizeof(SceneData);
 
-        // vk::DescriptorImageInfo descImgInfo[1];
-        // // descImgInfo[0].sampler
-        // descImgInfo[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        // // descImgInfo[0].imageView
+        vk::DescriptorImageInfo descImgInfo[1];
+        descImgInfo[0].sampler = testSampler.get();
+        descImgInfo[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        descImgInfo[0].imageView = testTextureImgView->get();
 
         vk::DescriptorBufferInfo descStorageBufInfo[1];
         descStorageBufInfo[0].buffer = objectsBuffer[i].getBuffer();
         descStorageBufInfo[0].offset = 0;
         descStorageBufInfo[0].range = sizeof(ObjectData) * objects.size();
 
-        vk::WriteDescriptorSet writeDescSet[2];
+        vk::WriteDescriptorSet writeDescSet[3];
         writeDescSet[0].dstSet = descSets[i].get();
         writeDescSet[0].dstBinding = 0;
         writeDescSet[0].dstArrayElement = 0;
         writeDescSet[0].descriptorType = vk::DescriptorType::eUniformBuffer;
         writeDescSet[0].descriptorCount = std::size(descBufInfo);
         writeDescSet[0].pBufferInfo = descBufInfo;
-        // writeDescSet[1].dstSet = descSets[i].get();
-        // writeDescSet[1].dstBinding = 1;
-        // writeDescSet[1].dstArrayElement = 0;
-        // writeDescSet[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-        // writeDescSet[1].descriptorCount = std::size(descImgInfo);
-        // writeDescSet[1].pImageInfo = descImgInfo;
         writeDescSet[1].dstSet = descSets[i].get();
-        writeDescSet[1].dstBinding = 2;
+        writeDescSet[1].dstBinding = 1;
         writeDescSet[1].dstArrayElement = 0;
-        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBuffer;
-        writeDescSet[1].descriptorCount = std::size(descStorageBufInfo);
-        writeDescSet[1].pBufferInfo = descStorageBufInfo;
+        writeDescSet[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        writeDescSet[1].descriptorCount = std::size(descImgInfo);
+        writeDescSet[1].pImageInfo = descImgInfo;
+        writeDescSet[2].dstSet = descSets[i].get();
+        writeDescSet[2].dstBinding = 2;
+        writeDescSet[2].dstArrayElement = 0;
+        writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[2].descriptorCount = std::size(descStorageBufInfo);
+        writeDescSet[2].pBufferInfo = descStorageBufInfo;
 
         device.updateDescriptorSets(writeDescSet, {});
     }
