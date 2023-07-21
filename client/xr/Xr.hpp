@@ -18,6 +18,14 @@ class XrManager {
     xr::UniqueSession session;
     std::vector<OpenxrSwapchainDetails> swapchains;
 
+    xr::EventDataBuffer evBuf;
+    bool session_running = false, shouldExit = false;
+
+    void HandleSessionStateChange(const xr::EventDataSessionStateChanged &ev);
+    bool PollOneEvent();
+    void PollEvent();
+    void RenderFrame();
+
   public:
     XrManager();
     ~XrManager();

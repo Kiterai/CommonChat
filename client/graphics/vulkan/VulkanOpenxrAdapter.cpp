@@ -137,6 +137,10 @@ std::unique_ptr<xr::impl::InputStructBase> VulkanManagerOpenxr::getXrGraphicsBin
     return std::make_unique<xr::GraphicsBindingVulkanKHR>(graphicsBinding);
 }
 
+void VulkanManagerOpenxr::render() {
+    // TODO
+}
+
 VulkanManagerOpenxr::VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId)
     : vkInst{createVulkanInstanceWithOpenxr(xrInst, xrSysId)},
       vkPhysDevice{getPhysicalDeviceWithOpenxr(xrInst, xrSysId, vkInst)},

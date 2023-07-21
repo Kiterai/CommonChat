@@ -26,4 +26,6 @@ class VulkanManagerOpenxr : public IGraphics {
     VulkanManagerOpenxr(xr::Instance xrInst, xr::SystemId xrSysId);
 
     void buildRenderTarget(std::vector<OpenxrRenderTargetHint> swapchains);
+
+    void render();
 };

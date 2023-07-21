@@ -1,7 +1,12 @@
 #include "./Xr.hpp"
 #include <fmt/format.h>
 #include <iostream>
+#include <thread>
 #include <vector>
+
+#define XR_CHK_ERR(f)                       \
+    if (auto result = f; XR_FAILED(result)) \
+        throw std::runtime_error(fmt::format("Err: {}, {} {}", to_string(result), __LINE__, #f));
 
 std::vector<const char *> requiredExtensions() {
     std::vector<const char *> exts;
@@ -107,7 +112,122 @@ XrManager::XrManager()
 XrManager::~XrManager() {
 }
 
+inline bool XrManager::PollOneEvent() {
+    auto result = instance->pollEvent(evBuf);
+    switch (result) {
+    case xr::Result::Success:
+        if (this->evBuf.type == xr::StructureType::EventDataEventsLost) {
+            auto &eventsLost = *reinterpret_cast<xr::EventDataEventsLost *>(&this->evBuf);
+            std::cout << "Event Lost: " << eventsLost.lostEventCount << std::endl;
+        }
+        return true;
+    case xr::Result::EventUnavailable:
+        return false;
+    default:
+        throw std::runtime_error(fmt::format("failed to poll event: {}", xr::to_string(result)));
+    }
+}
+
+inline void XrManager::HandleSessionStateChange(const xr::EventDataSessionStateChanged &ev) {
+    if (ev.session != this->session.get()) {
+        std::cout << "Event from Unknown Session" << std::endl;
+        return;
+    }
+    switch (ev.state) {
+    case xr::SessionState::Ready: {
+        xr::SessionBeginInfo beginInfo;
+        beginInfo.primaryViewConfigurationType = xr::ViewConfigurationType::PrimaryStereo;
+        session->beginSession(beginInfo);
+        session_running = true;
+        std::cout << "session began" << std::endl;
+        break;
+    }
+    case xr::SessionState::Stopping: {
+        session->endSession();
+        session_running = false;
+        std::cout << "session ended" << std::endl;
+        break;
+    }
+    case xr::SessionState::Exiting:
+    case xr::SessionState::LossPending:
+        // session_running = false;
+        shouldExit = true;
+        break;
+    default:
+        break;
+    }
+}
+
+inline void XrManager::PollEvent() {
+    while (PollOneEvent()) {
+        std::cout << fmt::format("Event: {}", to_string(this->evBuf.type)) << std::endl;
+        switch (this->evBuf.type) {
+        case xr::StructureType::EventDataSessionStateChanged: {
+            const auto &ev = *reinterpret_cast<xr::EventDataSessionStateChanged *>(&this->evBuf);
+            std::cout << "State -> " << to_string(ev.state) << std::endl;
+            HandleSessionStateChange(ev);
+        } break;
+        default:
+            break;
+        }
+    }
+}
+
+inline void XrManager::RenderFrame() {
+    xr::FrameWaitInfo frameWaitInfo;
+    auto frameState = session->waitFrame(frameWaitInfo);
+
+    xr::FrameBeginInfo beginInfo{};
+    XR_CHK_ERR(session->beginFrame(beginInfo));
+
+    constexpr auto max_layers_num = 1;
+    constexpr auto max_views_num = 2;
+
+    std::array<xr::CompositionLayerBaseHeader *, max_layers_num> layers;
+    std::array<xr::CompositionLayerProjectionView, max_views_num> projectionViews{};
+
+    xr::FrameEndInfo endInfo;
+    endInfo.displayTime = frameState.predictedDisplayTime;
+    endInfo.environmentBlendMode = xr::EnvironmentBlendMode::Opaque;
+    endInfo.layerCount = layers.size();
+    endInfo.layers = layers.data();
+
+    if (frameState.shouldRender) {
+        for (uint32_t i = 0; i < swapchains.size(); i++) {
+            const auto &swapchain = swapchains[i].swapchain.get();
+
+            xr::SwapchainImageAcquireInfo acquireInfo;
+            auto imageIndex = swapchain.acquireSwapchainImage(acquireInfo);
+
+            xr::SwapchainImageWaitInfo waitInfo;
+            waitInfo.timeout = xr::Duration::infinite();
+            swapchain.waitSwapchainImage(waitInfo);
+
+            projectionViews[i].type = xr::StructureType::CompositionLayerProjectionView;
+            // projectionViews[i].pose = views[i].pose;   
+            // projectionViews[i].fov = views[i].fov;
+            projectionViews[i].subImage.swapchain = swapchain.get();
+            projectionViews[i].subImage.imageRect.offset = xr::Offset2Di{0, 0};
+            projectionViews[i].subImage.imageRect.extent = swapchains[i].extent;
+
+            graphicsManager->render();
+
+            xr::SwapchainImageReleaseInfo releaseInfo;
+            swapchain.releaseSwapchainImage(releaseInfo);
+        }
+    }
+
+    session->endFrame(endInfo);
+}
+
 void XrManager::mainLoop() {
-    while (true) {
+    while (!shouldExit) {
+        PollEvent();
+        if (session_running) {
+            // PollAction();
+            RenderFrame();
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        }
     }
 }
