@@ -251,7 +251,7 @@ void VulkanManagerGlfw::render() {
         throw std::runtime_error("failed to acquire image");
 
     frameFlightFence[flightFrameIndex] =
-        core.render(0, acquireImgResult.value,
+        core.render(acquireImgResult.value,
                     {imageAcquiredSemaphores[flightFrameIndex].get()},
                     {vk::PipelineStageFlagBits::eColorAttachmentOutput},
                     {imageRenderedSemaphores[flightFrameIndex].get()});

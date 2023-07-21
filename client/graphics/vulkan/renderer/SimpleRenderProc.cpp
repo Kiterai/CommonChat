@@ -177,7 +177,6 @@ RenderProcRenderTargetDependant SimpleRenderProc::prepareRenderTargetDependant(c
 
 void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, const RenderProcRenderTargetDependant &rprtd) {
     const auto cmdBuf = rd.cmdBuf;
-    CommandRec cmd{cmdBuf};
 
     vk::ClearValue clearVal[1];
     clearVal[0].color.float32[0] = 0.0f;

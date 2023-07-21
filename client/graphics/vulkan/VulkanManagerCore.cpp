@@ -276,7 +276,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
     }
 }
 
-vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
+vk::Fence VulkanManagerCore::render(uint32_t imageIndex,
                                     std::initializer_list<vk::Semaphore> waitSemaphores,
                                     std::initializer_list<vk::PipelineStageFlags> waitStages,
                                     std::initializer_list<vk::Semaphore> signalSemaphores) {
@@ -287,24 +287,31 @@ vk::Fence VulkanManagerCore::render(uint32_t targetIndex, uint32_t imageIndex,
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
 
-    RenderDetails rd;
-    rd.cmdBuf = currentCmdBuf;
-    rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
-    rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
-    rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
-    rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
-    rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
-    rd.indexBuf = modelIndexBuffer.value().getBuffer();
-    rd.descSet = currentDescSet;
-    rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
-    rd.imageIndex = imageIndex;
+    {
+        CommandRec cmd{currentCmdBuf};
 
-    rd.modelsCount = indirectDraws.size();
-    rd.drawBuf = drawIndirectBuffer.value().getBuffer();
-    rd.drawBufOffset = 0;
-    rd.drawBufStride = sizeof(vk::DrawIndexedIndirectCommand);
+        for (uint32_t targetIndex = 0; targetIndex < renderTargets.size(); targetIndex++) {
+            RenderDetails rd;
+            rd.cmdBuf = currentCmdBuf;
+            rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
+            rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
+            rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
+            rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
+            rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
+            rd.indexBuf = modelIndexBuffer.value().getBuffer();
+            rd.descSet = currentDescSet;
+            rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
+            rd.imageIndex = imageIndex;
 
-    defaultRenderProc->render(rd, renderTargets[targetIndex], rprtd[targetIndex]);
+            rd.modelsCount = indirectDraws.size();
+            rd.drawBuf = drawIndirectBuffer.value().getBuffer();
+            rd.drawBufOffset = 0;
+            rd.drawBufStride = sizeof(vk::DrawIndexedIndirectCommand);
+
+            defaultRenderProc->render(rd, renderTargets[targetIndex], rprtd[targetIndex]);
+        }
+    }
+
     auto submitCmdBufs = {currentCmdBuf};
 
     vk::SubmitInfo submitInfo;
