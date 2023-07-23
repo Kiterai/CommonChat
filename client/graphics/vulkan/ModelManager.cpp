@@ -1,8 +1,8 @@
 #include "Modelmanager.hpp"
 #include "Buffer.hpp"
+#include "Helper.hpp"
 #include "Image.hpp"
 #include "Render.hpp"
-#include "Helper.hpp"
 #include <glm/glm.hpp>
 #include <stb_image.h>
 
@@ -41,6 +41,19 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
         throw std::runtime_error("error on load glb");
     auto asset = gltf->getParsedAsset();
 
+    auto datToSpan = [&](fastgltf::DataSource dat) {
+        auto bufferViewIndex = std::get<fastgltf::sources::BufferView>(dat).bufferViewIndex;
+        const auto &bufferView = asset->bufferViews[bufferViewIndex];
+        const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+        return fastgltf::span<const std::byte>(bufferBytes.data() + bufferView.byteOffset, bufferView.byteLength);
+    };
+    auto accessorToSpan = [&](size_t index) {
+        const auto &accessor = asset->accessors[index];
+        const auto &bufferView = asset->bufferViews[accessor.bufferViewIndex.value()];
+        const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+        return fastgltf::span<const std::byte>(bufferBytes.data() + bufferView.byteOffset, bufferView.byteLength);
+    };
+
     uint32_t vertNumSum = 0, indNumSum = 0;
     for (const auto &mesh : asset->meshes) {
         for (const auto &primitive : mesh.primitives) {
@@ -59,57 +72,51 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     MeshPointer pPrimitiveBase = allocate(vertNumSum, indNumSum);
 
     for (const auto &image : asset->images) {
-        auto bufferViewIndex = std::get<fastgltf::sources::BufferView>(image.data).bufferViewIndex;
-        const auto &bufferView = asset->bufferViews[bufferViewIndex];
-        const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+        const auto imageData = datToSpan(image.data);
 
         int w, h, ch;
-        auto pImage = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength, &w, &h, &ch, STBI_rgb_alpha);
-        if(!pImage)
+        auto pImage = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(imageData.data()), imageData.size_bytes(), &w, &h, &ch, STBI_rgb_alpha);
+        if (!pImage)
             throw std::runtime_error("failed to load texture image");
 
         textureAtlas.emplace_back(physDevice, device, queue, cmdBuf, pImage, vk::Extent3D{uint32_t(w), uint32_t(h), 1}, 1,
                                   vk::ImageUsageFlagBits::eSampled, fence);
         stbi_image_free(pImage);
     }
-    for(uint32_t i = 0; i < textureAtlas.size(); i++)
+    for (uint32_t i = 0; i < textureAtlas.size(); i++)
         textureImageViews.emplace_back(createImageViewFromImage(device, textureAtlas[i].getImage(), vk::Format::eR8G8B8A8Srgb, 1));
 
     MeshPointer pCurrentPrimitive = pPrimitiveBase;
     for (const auto &mesh : asset->meshes) {
         for (const auto &primitive : mesh.primitives) {
-            for (const auto &[attrName, attrIndex] : primitive.attributes) {
-                const auto &accessor = asset->accessors[attrIndex];
-                const auto &bufferView = asset->bufferViews[accessor.bufferViewIndex.value()];
-                const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+            for (const auto &[attrName, attrAccessorIndex] : primitive.attributes) {
+                const auto attrData = accessorToSpan(attrAccessorIndex);
                 if (attrName == "POSITION") {
                     modelPosVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                              static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                              static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                               pCurrentPrimitive.vertexBase * sizeof(glm::vec3), fence);
                 } else if (attrName == "NORMAL") {
                     modelNormVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                               static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                               static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                                pCurrentPrimitive.vertexBase * sizeof(glm::vec3), fence);
                 } else if (attrName == "TEXCOORD_0") {
                     modelTexcoordVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                                   static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                                   static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                                    pCurrentPrimitive.vertexBase * sizeof(glm::vec2), fence);
                 } else if (attrName == "JOINTS_0") {
                     modelJointsVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                                 static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                                 static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                                  pCurrentPrimitive.vertexBase * sizeof(glm::u16vec4), fence);
                 } else if (attrName == "WEIGHTS_0") {
                     modelWeightsVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                                  static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                                  static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                                   pCurrentPrimitive.vertexBase * sizeof(glm::vec4), fence);
                 }
             }
             {
-                const auto &accessor = asset->accessors[primitive.indicesAccessor.value()];
-                const auto &bufferView = asset->bufferViews[accessor.bufferViewIndex.value()];
-                const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+                const auto indexData = accessorToSpan(primitive.indicesAccessor.value());
                 modelIndexBuffer->write(physDevice, device, queue, cmdBuf,
-                                        static_cast<const void *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength,
+                                        static_cast<const void *>(indexData.data()), indexData.size_bytes(),
                                         pCurrentPrimitive.IndexBase * sizeof(uint32_t), fence);
             }
 
