@@ -13,6 +13,8 @@ layout(location = 3) in uvec4 inJoints;
 layout(location = 4) in vec4 inWeight;
 
 layout(location = 2) out vec2 outTexcoord;
+layout(location = 3) flat out uint outMaterialIndex;
+layout(location = 4) flat out uint outTextureIndex;
 
 struct ObjectData{
 	mat4 model;
@@ -52,4 +54,6 @@ void main() {
     gl_Position = camera.proj * camera.view * worldPos;
 
     outTexcoord = inTexcoord;
+    outMaterialIndex = meshBuffer.meshes[gl_InstanceIndex].materialIndex;
+    outTextureIndex = meshBuffer.meshes[gl_InstanceIndex].textureIndex;
 }

@@ -3,6 +3,7 @@
 #include "Image.hpp"
 #include "Render.hpp"
 #include <glm/glm.hpp>
+#include <stb_image.h>
 
 constexpr uint32_t maxVertNum = 1048576;
 constexpr uint32_t maxIndNum = 4194304;
@@ -55,6 +56,21 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     info.jointNum = asset->nodes.size();
 
     MeshPointer pPrimitiveBase = allocate(vertNumSum, indNumSum);
+
+    for (const auto &image : asset->images) {
+        auto bufferViewIndex = std::get<fastgltf::sources::BufferView>(image.data).bufferViewIndex;
+        const auto &bufferView = asset->bufferViews[bufferViewIndex];
+        const auto &imageBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+
+        int w, h, ch;
+        auto pImage = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(imageBytes.data()), imageBytes.size(), &w, &h, &ch, STBI_rgb_alpha);
+
+        textureAtlas.emplace_back(physDevice, device, queue, cmdBuf, pImage, vk::Extent3D{uint32_t(w), uint32_t(h), 1}, 1,
+                                  vk::ImageUsageFlagBits::eSampled, fence);
+
+        stbi_image_free(pImage);
+    }
+
     MeshPointer pCurrentPrimitive = pPrimitiveBase;
     for (const auto &mesh : asset->meshes) {
         for (const auto &primitive : mesh.primitives) {
@@ -95,7 +111,8 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
 
             pCurrentPrimitive.indexNum = asset->accessors[primitive.indicesAccessor.value()].count;
             pCurrentPrimitive.materialIndex = pPrimitiveBase.materialIndex + primitive.materialIndex.value();
-            pCurrentPrimitive.textureIndex = pPrimitiveBase.textureIndex + asset->materials[primitive.materialIndex.value()].pbrData->baseColorTexture->textureIndex;
+            pCurrentPrimitive.textureIndex = pPrimitiveBase.textureIndex +
+                                             asset->textures[asset->materials[primitive.materialIndex.value()].pbrData->baseColorTexture->textureIndex].imageIndex.value();
             info.primitives.push_back(pCurrentPrimitive);
 
             pCurrentPrimitive.vertexBase += asset->accessors[primitive.attributes.begin()->second].count;
