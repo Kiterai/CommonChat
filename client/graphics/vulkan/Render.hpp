@@ -3,6 +3,7 @@
 
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
+#include "Image.hpp"
 
 struct RenderTargetHint {
     vk::Format format;
@@ -11,6 +12,8 @@ struct RenderTargetHint {
 };
 
 struct RenderProcRenderTargetDependant {
+    std::vector<Image> depthImages;
+    std::vector<vk::UniqueImageView> depthImageViews;
     std::vector<vk::UniqueFramebuffer> frameBufs;
     vk::UniqueRenderPass renderpass;
     vk::UniquePipeline pipeline;
