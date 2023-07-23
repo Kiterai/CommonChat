@@ -133,7 +133,7 @@ VulkanManagerCore::VulkanManagerCore(
       descPool{createDescPool(device)},
       descLayout{createDescLayout(device)},
       descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
-      defaultRenderProc{new SimpleRenderProc{device, descLayout.get()}},
+      defaultRenderProc{new SimpleRenderProc{physicalDevice, device, descLayout.get()}},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])},
       modelManager{physicalDevice, device} {
