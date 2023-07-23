@@ -8,7 +8,7 @@ Image::Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D exte
     imgCreateInfo.extent = extent;
     imgCreateInfo.mipLevels = 1;
     imgCreateInfo.arrayLayers = arrayNum;
-    imgCreateInfo.format = vk::Format::eR8G8B8A8Srgb;
+    imgCreateInfo.format = format;
     imgCreateInfo.tiling = vk::ImageTiling::eOptimal;
     imgCreateInfo.initialLayout = vk::ImageLayout::eUndefined;
     imgCreateInfo.usage = usage;
