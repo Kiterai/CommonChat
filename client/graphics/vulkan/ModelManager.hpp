@@ -20,14 +20,15 @@ class ModelManager {
     std::optional<ReadonlyBuffer> modelWeightsVertBuffer;
     std::optional<ReadonlyBuffer> modelIndexBuffer;
     std::vector<ReadonlyImage> textureAtlas;
+    std::vector<vk::UniqueImageView> textureImageViews;
 
-public:
+  public:
     struct MeshPointer {
         uint32_t vertexBase;
         uint32_t IndexBase;
         uint32_t indexNum;
         uint32_t materialIndex;
-        uint32_t textureIndex;  // no longer used
+        uint32_t textureIndex; // no longer used
     };
 
     struct ModelInfo {
@@ -39,6 +40,7 @@ public:
     MeshPointer allocate(uint32_t vertNum, uint32_t indNum);
     void prepareRender(RenderDetails &rd);
     ModelInfo loadModelFromGlbFile(const std::filesystem::path path, vk::Queue queue, vk::CommandBuffer cmdBuf, vk::Fence fence);
+    const auto &getTextureImageViews() const { return textureImageViews; }  // no longer used;
 };
 
 #endif VULKAN_MODEL_MANAGER_HPP

@@ -2,6 +2,7 @@
 #include "Buffer.hpp"
 #include "Image.hpp"
 #include "Render.hpp"
+#include "Helper.hpp"
 #include <glm/glm.hpp>
 #include <stb_image.h>
 
@@ -60,16 +61,19 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     for (const auto &image : asset->images) {
         auto bufferViewIndex = std::get<fastgltf::sources::BufferView>(image.data).bufferViewIndex;
         const auto &bufferView = asset->bufferViews[bufferViewIndex];
-        const auto &imageBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
+        const auto &bufferBytes = std::get<fastgltf::sources::ByteView>(asset->buffers[bufferView.bufferIndex].data).bytes;
 
         int w, h, ch;
-        auto pImage = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(imageBytes.data()), imageBytes.size(), &w, &h, &ch, STBI_rgb_alpha);
+        auto pImage = stbi_load_from_memory(reinterpret_cast<const stbi_uc *>(bufferBytes.data() + bufferView.byteOffset), bufferView.byteLength, &w, &h, &ch, STBI_rgb_alpha);
+        if(!pImage)
+            throw std::runtime_error("failed to load texture image");
 
         textureAtlas.emplace_back(physDevice, device, queue, cmdBuf, pImage, vk::Extent3D{uint32_t(w), uint32_t(h), 1}, 1,
                                   vk::ImageUsageFlagBits::eSampled, fence);
-
         stbi_image_free(pImage);
     }
+    for(uint32_t i = 0; i < textureAtlas.size(); i++)
+        textureImageViews.emplace_back(createImageViewFromImage(device, textureAtlas[i].getImage(), vk::Format::eR8G8B8A8Srgb, 1));
 
     MeshPointer pCurrentPrimitive = pPrimitiveBase;
     for (const auto &mesh : asset->meshes) {
