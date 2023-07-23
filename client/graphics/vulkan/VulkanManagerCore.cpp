@@ -12,42 +12,22 @@ constexpr uint32_t coreflightFramesNum = 2;
 struct ObjectData {
     glm::mat4 modelMat;
     glm::uint32_t jointIndex;
-    glm::uint32_t textureIndex;
-    glm::uint32_t dummy[2];
+    glm::uint32_t dummy[3];
+};
+
+struct MeshData {
+    glm::uint32_t objectIndex;
+    glm::uint32_t materialIndex;
+    glm::uint32_t textureIndex; // no longer used
+    glm::uint32_t dummy[1];
 };
 
 constexpr auto idmat = glm::identity<glm::mat4x4>();
 
-std::vector<glm::vec3> posVertices = {{-0.5, 0.0, 0.0}, {0.5, 0.0, 0.0}, {-0.5, 0.5, 0.0}, {0.5, 0.5, 0.0}, {-0.5, 1.0, 0.0}, {0.5, 1.0, 0.0}, {-0.5, 1.5, 0.0}, {0.5, 1.5, 0.0}, {-0.5, 2.0, 0.0}, {0.5, 2.0, 0.0}};
-std::vector<glm::vec3> normVertices = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
-std::vector<glm::vec2> texcoordVertices = {{0.0, 0.0}, {1.0, 0.0}, {0.0, 0.25}, {1.0, 0.25}, {0.0, 0.50}, {1.0, 0.50}, {0.0, 0.75}, {1.0, 0.75}, {0.0, 1.0}, {1.0, 1.0}};
-std::vector<glm::i16vec4> jointsVertices = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}, {0, 1, 0, 0}};
-std::vector<glm::vec4> weightsVertices = {{1.00, 0.00, 0.0, 0.0}, {1.00, 0.00, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.75, 0.25, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.50, 0.50, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.25, 0.75, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}, {0.00, 1.00, 0.0, 0.0}};
-std::vector<uint32_t> indices = {0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 7, 4, 7, 6, 6, 7, 9, 6, 9, 8};
-std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {{24, 1, 0, 0, 0}, {24, 1, 0, 0, 1}};
-std::vector<ObjectData> objects = {
-    {
-        glm::translate(idmat, glm::vec3(1, 0, 0)),
-        2,
-        0,
-    },
-    {
-        glm::translate(idmat, glm::vec3(-1, 0, 0)),
-        0,
-        0,
-    },
-};
-
-std::vector<glm::mat4> joints = {
-    idmat,
-    glm::translate(idmat, glm::vec3(0, 1, 0)) *
-        glm::rotate(idmat, glm::half_pi<float>(), glm::vec3(0, 0, 1)) *
-        glm::translate(idmat, glm::vec3(0, -1, 0)),
-    idmat,
-    glm::translate(idmat, glm::vec3(0, 1, 0)) *
-        glm::rotate(idmat, -glm::half_pi<float>() / 2, glm::vec3(0, 0, 1)) *
-        glm::translate(idmat, glm::vec3(0, -1, 0)),
-};
+std::vector<vk::DrawIndexedIndirectCommand> indirectDraws = {};
+std::vector<MeshData> meshes = {};
+std::vector<ObjectData> objects = {};
+std::vector<glm::mat4> joints = {};
 
 vk::UniqueDescriptorPool createDescPool(vk::Device device) {
     vk::DescriptorPoolCreateInfo createInfo;
@@ -69,7 +49,7 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
 }
 
 vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
-    vk::DescriptorSetLayoutBinding binding[4];
+    vk::DescriptorSetLayoutBinding binding[5];
     binding[0].binding = 0;
     binding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
     binding[0].descriptorCount = 1;
@@ -86,6 +66,10 @@ vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
     binding[3].descriptorType = vk::DescriptorType::eStorageBuffer;
     binding[3].descriptorCount = 1;
     binding[3].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    binding[4].binding = 4;
+    binding[4].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[4].descriptorCount = 1;
+    binding[4].stageFlags = vk::ShaderStageFlagBits::eVertex;
 
     vk::DescriptorSetLayoutCreateInfo createInfo;
     createInfo.bindingCount = std::size(binding);
@@ -154,60 +138,32 @@ VulkanManagerCore::VulkanManagerCore(
       assetManageFence{std::move(createFences(device, 1, true)[0])},
       modelManager{physicalDevice, device} {
 
-    modelPosVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                               static_cast<void *>(posVertices.data()), posVertices.size() * sizeof(glm::vec3),
-                               vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    modelNormVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                                static_cast<void *>(normVertices.data()), normVertices.size() * sizeof(glm::vec3),
-                                vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    modelTexcoordVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                                    static_cast<void *>(texcoordVertices.data()), texcoordVertices.size() * sizeof(glm::vec2),
-                                    vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    modelJointsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                                  static_cast<void *>(jointsVertices.data()), jointsVertices.size() * sizeof(glm::i16vec4),
-                                  vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    modelWeightsVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                                   static_cast<void *>(weightsVertices.data()), weightsVertices.size() * sizeof(glm::vec4),
-                                   vk::BufferUsageFlagBits::eVertexBuffer, assetManageFence.get());
-    modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
-                             indices.data(), indices.size() * sizeof(uint32_t),
-                             vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
-
     auto modelInfo = modelManager.loadModelFromGlbFile("AliciaSolid.vrm", graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get());
 
-    indirectDraws.clear();
-    objects.clear();
-    for(const auto& primitive : modelInfo.primitives) {
+    {
+        ObjectData obj;
+        obj.modelMat = glm::translate(idmat, glm::vec3{0.0, -0.5, 0.0});
+        obj.jointIndex = 0;
+        objects.push_back(obj);
+    }
+    for (const auto &primitive : modelInfo.primitives) {
         vk::DrawIndexedIndirectCommand drawCmd;
         drawCmd.vertexOffset = primitive.vertexBase;
         drawCmd.firstIndex = primitive.IndexBase;
-        drawCmd.firstInstance = 0;
+        drawCmd.firstInstance = indirectDraws.size();
         drawCmd.instanceCount = 1;
         drawCmd.indexCount = primitive.indexNum;
         indirectDraws.push_back(drawCmd);
 
-        ObjectData obj;
-        obj.modelMat = glm::identity<glm::mat4>();
-        obj.textureIndex = 0;
-        obj.jointIndex = 0;
-        objects.push_back(obj);
+        MeshData mesh;
+        mesh.objectIndex = 0;
+        mesh.materialIndex = 0;
+        mesh.textureIndex = 0;
+        meshes.push_back(mesh);
     }
-
-    // {
-    //     vk::DrawIndexedIndirectCommand drawCmd;
-    //     drawCmd.vertexOffset = 0;
-    //     drawCmd.firstIndex = 0;
-    //     drawCmd.firstInstance = 0;
-    //     drawCmd.instanceCount = 1;
-    //     drawCmd.indexCount = 2574;
-    //     indirectDraws.push_back(drawCmd);
-
-    //     ObjectData obj;
-    //     obj.modelMat = glm::identity<glm::mat4>();
-    //     obj.textureIndex = 0;
-    //     obj.jointIndex = 0;
-    //     objects.push_back(obj);
-    // }
+    for (uint32_t i = 0; i < modelInfo.jointNum; i++) {
+        joints.push_back(glm::identity<glm::mat4>());
+    }
 
     drawIndirectBuffer.emplace(physicalDevice, device,
                                sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size(),
@@ -229,6 +185,8 @@ VulkanManagerCore::VulkanManagerCore(
     testSampler = createSampler(device);
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+        meshesBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * meshes.size(), vk::BufferUsageFlagBits::eStorageBuffer);
+        std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(meshesBuffer.back().get()));
         objectsBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * objects.size(), vk::BufferUsageFlagBits::eStorageBuffer);
         std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer.back().get()));
         jointsBuffer.emplace_back(physicalDevice, device, sizeof(glm::mat4) * joints.size(), vk::BufferUsageFlagBits::eStorageBuffer);
@@ -267,17 +225,22 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         descImgInfo[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
         descImgInfo[0].imageView = testTextureImgView->get();
 
-        vk::DescriptorBufferInfo descStorageBufInfo[1];
-        descStorageBufInfo[0].buffer = objectsBuffer[i].getBuffer();
-        descStorageBufInfo[0].offset = 0;
-        descStorageBufInfo[0].range = sizeof(ObjectData) * objects.size();
+        vk::DescriptorBufferInfo descObjectBufInfo[1];
+        descObjectBufInfo[0].buffer = objectsBuffer[i].getBuffer();
+        descObjectBufInfo[0].offset = 0;
+        descObjectBufInfo[0].range = sizeof(ObjectData) * objects.size();
 
         vk::DescriptorBufferInfo descJointBufInfo[1];
         descJointBufInfo[0].buffer = jointsBuffer[i].getBuffer();
         descJointBufInfo[0].offset = 0;
         descJointBufInfo[0].range = sizeof(glm::mat4) * joints.size();
+        
+        vk::DescriptorBufferInfo descMeshBufInfo[1];
+        descMeshBufInfo[0].buffer = meshesBuffer[i].getBuffer();
+        descMeshBufInfo[0].offset = 0;
+        descMeshBufInfo[0].range = sizeof(MeshData) * meshes.size();
 
-        vk::WriteDescriptorSet writeDescSet[4];
+        vk::WriteDescriptorSet writeDescSet[5];
         writeDescSet[0].dstSet = descSets[i].get();
         writeDescSet[0].dstBinding = 0;
         writeDescSet[0].dstArrayElement = 0;
@@ -294,14 +257,20 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         writeDescSet[2].dstBinding = 2;
         writeDescSet[2].dstArrayElement = 0;
         writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBuffer;
-        writeDescSet[2].descriptorCount = std::size(descStorageBufInfo);
-        writeDescSet[2].pBufferInfo = descStorageBufInfo;
+        writeDescSet[2].descriptorCount = std::size(descObjectBufInfo);
+        writeDescSet[2].pBufferInfo = descObjectBufInfo;
         writeDescSet[3].dstSet = descSets[i].get();
         writeDescSet[3].dstBinding = 3;
         writeDescSet[3].dstArrayElement = 0;
         writeDescSet[3].descriptorType = vk::DescriptorType::eStorageBuffer;
         writeDescSet[3].descriptorCount = std::size(descJointBufInfo);
         writeDescSet[3].pBufferInfo = descJointBufInfo;
+        writeDescSet[4].dstSet = descSets[i].get();
+        writeDescSet[4].dstBinding = 4;
+        writeDescSet[4].dstArrayElement = 0;
+        writeDescSet[4].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[4].descriptorCount = std::size(descMeshBufInfo);
+        writeDescSet[4].pBufferInfo = descMeshBufInfo;
 
         device.updateDescriptorSets(writeDescSet, {});
     }
@@ -332,12 +301,6 @@ vk::Fence VulkanManagerCore::render(uint32_t imageIndex,
             RenderDetails rd;
             rd.cmdBuf = currentCmdBuf;
             modelManager.prepareRender(rd);
-            // rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
-            // rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
-            // rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
-            // rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
-            // rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
-            // rd.indexBuf = modelIndexBuffer.value().getBuffer();
             rd.descSet = currentDescSet;
             rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
             rd.imageIndex = imageIndex;
