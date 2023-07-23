@@ -18,7 +18,7 @@ ModelManager::ModelManager(vk::PhysicalDevice physDevice, vk::Device device) : p
 }
 
 ModelManager::MeshPointer ModelManager::allocate(uint32_t vertNum, uint32_t indNum) {
-    return MeshPointer{0, 0};
+    return MeshPointer{0, 0, 0, 0, 0};
 }
 
 void ModelManager::prepareRender(RenderDetails &rd) {
@@ -54,7 +54,8 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     ModelInfo info;
     info.jointNum = asset->nodes.size();
 
-    MeshPointer pCurrentPrimitive = allocate(vertNumSum, indNumSum);
+    MeshPointer pPrimitiveBase = allocate(vertNumSum, indNumSum);
+    MeshPointer pCurrentPrimitive = pPrimitiveBase;
     for (const auto &mesh : asset->meshes) {
         for (const auto &primitive : mesh.primitives) {
             for (const auto &[attrName, attrIndex] : primitive.attributes) {
@@ -93,6 +94,8 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
             }
 
             pCurrentPrimitive.indexNum = asset->accessors[primitive.indicesAccessor.value()].count;
+            pCurrentPrimitive.materialIndex = pPrimitiveBase.materialIndex + primitive.materialIndex.value();
+            pCurrentPrimitive.textureIndex = pPrimitiveBase.textureIndex + asset->materials[primitive.materialIndex.value()].pbrData->baseColorTexture->textureIndex;
             info.primitives.push_back(pCurrentPrimitive);
 
             pCurrentPrimitive.vertexBase += asset->accessors[primitive.attributes.begin()->second].count;

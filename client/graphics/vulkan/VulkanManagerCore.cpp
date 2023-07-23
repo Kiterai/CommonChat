@@ -157,8 +157,8 @@ VulkanManagerCore::VulkanManagerCore(
 
         MeshData mesh;
         mesh.objectIndex = 0;
-        mesh.materialIndex = 0;
-        mesh.textureIndex = 0;
+        mesh.materialIndex = primitive.materialIndex;
+        mesh.textureIndex = primitive.textureIndex;
         meshes.push_back(mesh);
     }
     for (uint32_t i = 0; i < modelInfo.jointNum; i++) {

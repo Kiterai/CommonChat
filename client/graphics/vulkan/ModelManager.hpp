@@ -26,6 +26,8 @@ public:
         uint32_t vertexBase;
         uint32_t IndexBase;
         uint32_t indexNum;
+        uint32_t materialIndex;
+        uint32_t textureIndex;  // no longer used
     };
 
     struct ModelInfo {
