@@ -154,7 +154,7 @@ std::optional<uint32_t> findMemoryTypeIndex(vk::PhysicalDevice physDevice, std::
     return index;
 }
 
-void writeByMemoryMapping(vk::Device device, vk::DeviceMemory memory, void *src, size_t sz, vk::DeviceSize dstOffset) {
+void writeByMemoryMapping(vk::Device device, vk::DeviceMemory memory, const void *src, size_t sz, vk::DeviceSize dstOffset) {
     auto pMem = device.mapMemory(memory, dstOffset, sz);
     std::memcpy(pMem, src, sz);
     device.flushMappedMemoryRanges({vk::MappedMemoryRange{memory, dstOffset, sz}});

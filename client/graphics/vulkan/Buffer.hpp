@@ -20,10 +20,10 @@ class Buffer {
 
 class ReadonlyBuffer : public Buffer {
   public:
-    ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence);
+    ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, const void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence);
     ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::BufferUsageFlags usage, vk::DeviceSize sz);
     ReadonlyBuffer(ReadonlyBuffer&&) = default;
-    void write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::DeviceSize dstOffset, vk::Fence fence);
+    void write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, const void *datSrc, vk::DeviceSize sz, vk::DeviceSize dstOffset, vk::Fence fence);
 };
 
 class CommunicationBuffer : public Buffer {

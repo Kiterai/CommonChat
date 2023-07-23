@@ -17,7 +17,7 @@ Buffer::Buffer(vk::PhysicalDevice physDevice, vk::Device device, vk::DeviceSize 
     device.bindBufferMemory(buffer.get(), memory.get(), 0);
 }
 
-ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence)
+ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, const void *datSrc, vk::DeviceSize sz, vk::BufferUsageFlags usage, vk::Fence fence)
     : Buffer{physDevice, device, sz, usage | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
     write(physDevice, device, queue, cmdBuf, datSrc, sz, 0, fence);
 }
@@ -26,7 +26,7 @@ ReadonlyBuffer::ReadonlyBuffer(vk::PhysicalDevice physDevice, vk::Device device,
     : Buffer{physDevice, device, sz, usage | vk::BufferUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
 }
 
-void ReadonlyBuffer::write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::DeviceSize sz, vk::DeviceSize offset, vk::Fence fence) {
+void ReadonlyBuffer::write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, const void *datSrc, vk::DeviceSize sz, vk::DeviceSize offset, vk::Fence fence) {
     Buffer stagingBuf{physDevice, device, sz, vk::BufferUsageFlagBits::eTransferSrc, vk::MemoryPropertyFlagBits::eHostVisible};
     device.waitForFences({fence}, true, UINT64_MAX);
     device.resetFences({fence});
