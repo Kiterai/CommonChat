@@ -151,7 +151,8 @@ VulkanManagerCore::VulkanManagerCore(
       descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
       defaultRenderProc{new SimpleRenderProc{device, descLayout.get()}},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
-      assetManageFence{std::move(createFences(device, 1, true)[0])} {
+      assetManageFence{std::move(createFences(device, 1, true)[0])},
+      modelManager{physicalDevice, device} {
 
     modelPosVertBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                                static_cast<void *>(posVertices.data()), posVertices.size() * sizeof(glm::vec3),
@@ -171,6 +172,43 @@ VulkanManagerCore::VulkanManagerCore(
     modelIndexBuffer.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(),
                              indices.data(), indices.size() * sizeof(uint32_t),
                              vk::BufferUsageFlagBits::eIndexBuffer, assetManageFence.get());
+
+    auto modelInfo = modelManager.loadModelFromGlbFile("AliciaSolid.vrm", graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get());
+
+    indirectDraws.clear();
+    objects.clear();
+    for(const auto& primitive : modelInfo.primitives) {
+        vk::DrawIndexedIndirectCommand drawCmd;
+        drawCmd.vertexOffset = primitive.vertexBase;
+        drawCmd.firstIndex = primitive.IndexBase;
+        drawCmd.firstInstance = 0;
+        drawCmd.instanceCount = 1;
+        drawCmd.indexCount = primitive.indexNum;
+        indirectDraws.push_back(drawCmd);
+
+        ObjectData obj;
+        obj.modelMat = glm::identity<glm::mat4>();
+        obj.textureIndex = 0;
+        obj.jointIndex = 0;
+        objects.push_back(obj);
+    }
+
+    // {
+    //     vk::DrawIndexedIndirectCommand drawCmd;
+    //     drawCmd.vertexOffset = 0;
+    //     drawCmd.firstIndex = 0;
+    //     drawCmd.firstInstance = 0;
+    //     drawCmd.instanceCount = 1;
+    //     drawCmd.indexCount = 2574;
+    //     indirectDraws.push_back(drawCmd);
+
+    //     ObjectData obj;
+    //     obj.modelMat = glm::identity<glm::mat4>();
+    //     obj.textureIndex = 0;
+    //     obj.jointIndex = 0;
+    //     objects.push_back(obj);
+    // }
+
     drawIndirectBuffer.emplace(physicalDevice, device,
                                sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size(),
                                vk::BufferUsageFlagBits::eIndirectBuffer);
@@ -179,7 +217,7 @@ VulkanManagerCore::VulkanManagerCore(
 
     {
         int texWidth, texHeight, texChannels;
-        auto pixels = stbi_load("texture.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        auto pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 
         testTexture.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(), pixels,
                             vk::Extent3D{static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1}, 1,
@@ -293,12 +331,13 @@ vk::Fence VulkanManagerCore::render(uint32_t imageIndex,
         for (uint32_t targetIndex = 0; targetIndex < renderTargets.size(); targetIndex++) {
             RenderDetails rd;
             rd.cmdBuf = currentCmdBuf;
-            rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
-            rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
-            rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
-            rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
-            rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
-            rd.indexBuf = modelIndexBuffer.value().getBuffer();
+            modelManager.prepareRender(rd);
+            // rd.positionVertBuf = modelPosVertBuffer.value().getBuffer();
+            // rd.normalVertBuf = modelNormVertBuffer.value().getBuffer();
+            // rd.texcoordVertBuf[0] = modelTexcoordVertBuffer.value().getBuffer();
+            // rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
+            // rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
+            // rd.indexBuf = modelIndexBuffer.value().getBuffer();
             rd.descSet = currentDescSet;
             rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
             rd.imageIndex = imageIndex;

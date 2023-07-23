@@ -5,6 +5,7 @@
 #include "Helper.hpp"
 #include "Buffer.hpp"
 #include "Image.hpp"
+#include "ModelManager.hpp"
 #include <vulkan/vulkan.hpp>
 
 class VulkanManagerCore {
@@ -44,6 +45,8 @@ class VulkanManagerCore {
     std::optional<ReadonlyImage> testTexture;
     std::optional<vk::UniqueImageView> testTextureImgView;
     vk::UniqueSampler testSampler;
+
+    ModelManager modelManager;
 
   public:
     VulkanManagerCore(

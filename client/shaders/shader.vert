@@ -37,7 +37,8 @@ void main() {
         inWeight.z * jointBuffer.joints[jointIndex + inJoints.z] +
         inWeight.w * jointBuffer.joints[jointIndex + inJoints.w];
 
-    vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * skinMat * vec4(inPos, 1.0);
+    // vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * skinMat * vec4(inPos, 1.0);
+    vec4 worldPos = objectBuffer.objects[gl_InstanceIndex].model * vec4(inPos, 1.0);
     gl_Position = camera.proj * camera.view * worldPos;
 
     outTexcoord = inTexcoord;
