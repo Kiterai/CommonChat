@@ -81,6 +81,7 @@ vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, c
     std::vector<vk::DeviceQueueCreateInfo> queueInfos;
 
     exts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    exts.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     vk::DeviceQueueCreateInfo queueInfo;
     queueInfo.queueFamilyIndex = queueSet.graphicsQueueFamilyIndex;
@@ -88,11 +89,17 @@ vk::UniqueDevice createVulkanDeviceWithGlfw(vk::PhysicalDevice physicalDevice, c
     float queuePriorities[] = {1.0};
     queueInfo.pQueuePriorities = queuePriorities;
     queueInfos.push_back(queueInfo);
-    
-    auto devFeats = physicalDevice.getFeatures();
+
+    auto devFeats = physicalDevice.getFeatures2();
+    vk::PhysicalDeviceDescriptorIndexingFeatures feati;
+    feati.shaderSampledImageArrayNonUniformIndexing = true;
+    feati.runtimeDescriptorArray = true;
+    feati.descriptorBindingVariableDescriptorCount = true;
+    feati.pNext = &devFeats;
 
     vk::DeviceCreateInfo deviceCreateInfo;
-    deviceCreateInfo.pEnabledFeatures = &devFeats;
+    deviceCreateInfo.pNext = &feati;
+    // deviceCreateInfo.pEnabledFeatures = &devFeats;
     deviceCreateInfo.enabledExtensionCount = exts.size();
     deviceCreateInfo.ppEnabledExtensionNames = exts.data();
     deviceCreateInfo.enabledLayerCount = layers.size();
