@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 
 vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTargetFormat) {
-    vk::AttachmentDescription attachments[1];
+    vk::AttachmentDescription attachments[2];
     attachments[0].format = renderTargetFormat;
     attachments[0].samples = vk::SampleCountFlagBits::e1;
     attachments[0].loadOp = vk::AttachmentLoadOp::eClear;
@@ -11,23 +11,44 @@ vk::UniqueRenderPass createRenderPass(vk::Device device, vk::Format renderTarget
     attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
     attachments[0].initialLayout = vk::ImageLayout::eUndefined;
     attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
+    attachments[1].format = vk::Format::eD32Sfloat;
+    attachments[1].samples = vk::SampleCountFlagBits::e1;
+    attachments[1].loadOp = vk::AttachmentLoadOp::eClear;
+    attachments[1].storeOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[1].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    attachments[1].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    attachments[1].initialLayout = vk::ImageLayout::eUndefined;
+    attachments[1].finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
     vk::AttachmentReference subpass0_attachmentRefs[1];
     subpass0_attachmentRefs[0].attachment = 0;
     subpass0_attachmentRefs[0].layout = vk::ImageLayout::eColorAttachmentOptimal;
 
+    vk::AttachmentReference subpass0_depthAttachmentRef;
+    subpass0_depthAttachmentRef.attachment = 1;
+    subpass0_depthAttachmentRef.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
     vk::SubpassDescription subpasses[1];
     subpasses[0].pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
     subpasses[0].colorAttachmentCount = 1;
     subpasses[0].pColorAttachments = subpass0_attachmentRefs;
+    subpasses[0].pDepthStencilAttachment = &subpass0_depthAttachmentRef;
+
+    vk::SubpassDependency dependency[1];
+    dependency[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency[0].dstSubpass = 0;
+    dependency[0].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+    dependency[0].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+    dependency[0].srcAccessMask = {};
+    dependency[0].dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 
     vk::RenderPassCreateInfo renderpassCreateInfo;
-    renderpassCreateInfo.attachmentCount = 1;
+    renderpassCreateInfo.attachmentCount = std::size(attachments);
     renderpassCreateInfo.pAttachments = attachments;
-    renderpassCreateInfo.subpassCount = 1;
+    renderpassCreateInfo.subpassCount = std::size(subpasses);
     renderpassCreateInfo.pSubpasses = subpasses;
-    renderpassCreateInfo.dependencyCount = 0;
-    renderpassCreateInfo.pDependencies = nullptr;
+    renderpassCreateInfo.dependencyCount = std::size(dependency);
+    renderpassCreateInfo.pDependencies = dependency;
 
     return device.createRenderPassUnique(renderpassCreateInfo);
 }
@@ -133,6 +154,17 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
     blend.attachmentCount = 1;
     blend.pAttachments = blendattachment;
 
+    vk::PipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.depthTestEnable = true;
+    depthStencil.depthWriteEnable = true;
+    depthStencil.depthCompareOp = vk::CompareOp::eLess;
+    depthStencil.depthBoundsTestEnable = false;
+    depthStencil.minDepthBounds = 0.0f;
+    depthStencil.maxDepthBounds = 1.0f;
+    depthStencil.stencilTestEnable = false;
+    depthStencil.front = vk::StencilOpState{};
+    depthStencil.back = vk::StencilOpState{};
+
     vk::PipelineShaderStageCreateInfo shaderStage[2];
     shaderStage[0].stage = vk::ShaderStageFlagBits::eVertex;
     shaderStage[0].module = shaders[0].get();
@@ -148,6 +180,7 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
     pipelineCreateInfo.pRasterizationState = &rasterizer;
     pipelineCreateInfo.pMultisampleState = &multisample;
     pipelineCreateInfo.pColorBlendState = &blend;
+    pipelineCreateInfo.pDepthStencilState = &depthStencil;
     pipelineCreateInfo.layout = pipelineLayout;
     pipelineCreateInfo.renderPass = renderpass;
     pipelineCreateInfo.subpass = 0;
@@ -157,8 +190,8 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
     return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
-SimpleRenderProc::SimpleRenderProc(vk::Device _device, vk::DescriptorSetLayout descLayout)
-    : device(_device) {
+SimpleRenderProc::SimpleRenderProc(vk::PhysicalDevice _physDevice, vk::Device _device, vk::DescriptorSetLayout descLayout)
+    : physDevice(_physDevice), device(_device) {
     pipelinelayout = createPipelineLayout(device, {descLayout});
 
     auto featVertShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
@@ -169,26 +202,35 @@ SimpleRenderProc::SimpleRenderProc(vk::Device _device, vk::DescriptorSetLayout d
 
 RenderProcRenderTargetDependant SimpleRenderProc::prepareRenderTargetDependant(const RenderTarget &rt) {
     RenderProcRenderTargetDependant d;
+
+    for (uint32_t i = 0; i < rt.imageViews.size(); i++) {
+        d.depthImages.emplace_back(physDevice, device, vk::Extent3D{rt.extent.width, rt.extent.height, 1}, 1,
+                                   vk::Format::eD32Sfloat, vk::ImageUsageFlagBits::eDepthStencilAttachment, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        d.depthImageViews.emplace_back(createImageViewFromImage(device, d.depthImages.back().getImage(), vk::Format::eD32Sfloat, 1, vk::ImageAspectFlagBits::eDepth));
+    }
+
     d.renderpass = createRenderPass(device, rt.format);
     d.pipeline = createPipeline(device, rt.extent, d.renderpass.get(), pipelinelayout.get());
-    d.frameBufs = createFrameBufsFromImageView(device, d.renderpass.get(), rt.extent, {rt.imageViews});
+    d.frameBufs = createFrameBufsFromImageView(device, d.renderpass.get(), rt.extent, {rt.imageViews, d.depthImageViews});
     return d;
 }
 
 void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, const RenderProcRenderTargetDependant &rprtd) {
     const auto cmdBuf = rd.cmdBuf;
 
-    vk::ClearValue clearVal[1];
+    vk::ClearValue clearVal[2];
     clearVal[0].color.float32[0] = 0.0f;
     clearVal[0].color.float32[1] = 0.0f;
     clearVal[0].color.float32[2] = 0.0f;
     clearVal[0].color.float32[3] = 1.0f;
+    clearVal[1].depthStencil.depth = 1.0f;
+    clearVal[1].depthStencil.stencil = 0.0f;
 
     vk::RenderPassBeginInfo rpBeginInfo;
     rpBeginInfo.renderPass = rprtd.renderpass.get();
     rpBeginInfo.framebuffer = rprtd.frameBufs[rd.imageIndex].get();
     rpBeginInfo.renderArea = vk::Rect2D{{0, 0}, rt.extent};
-    rpBeginInfo.clearValueCount = 1;
+    rpBeginInfo.clearValueCount = std::size(clearVal);
     rpBeginInfo.pClearValues = clearVal;
 
     cmdBuf.beginRenderPass(rpBeginInfo, vk::SubpassContents::eInline);
