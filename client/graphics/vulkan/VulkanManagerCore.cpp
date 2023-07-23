@@ -36,7 +36,7 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
     poolSizes[0].type = vk::DescriptorType::eUniformBuffer;
     poolSizes[1].descriptorCount = 8;
     poolSizes[1].type = vk::DescriptorType::eUniformBufferDynamic;
-    poolSizes[2].descriptorCount = 8;
+    poolSizes[2].descriptorCount = 256;
     poolSizes[2].type = vk::DescriptorType::eSampledImage;
     poolSizes[3].descriptorCount = 8;
     poolSizes[3].type = vk::DescriptorType::eStorageBuffer;
@@ -56,7 +56,7 @@ vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
     binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
     binding[1].binding = 1;
     binding[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    binding[1].descriptorCount = 1;
+    binding[1].descriptorCount = 8;
     binding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
     binding[2].binding = 2;
     binding[2].descriptorType = vk::DescriptorType::eStorageBuffer;
@@ -185,8 +185,8 @@ VulkanManagerCore::VulkanManagerCore(
     testSampler = createSampler(device);
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        meshesBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * meshes.size(), vk::BufferUsageFlagBits::eStorageBuffer);
-        std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(meshesBuffer.back().get()));
+        meshesBuffer.emplace_back(physicalDevice, device, sizeof(MeshData) * meshes.size(), vk::BufferUsageFlagBits::eStorageBuffer);
+        std::copy(meshes.begin(), meshes.end(), static_cast<MeshData *>(meshesBuffer.back().get()));
         objectsBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * objects.size(), vk::BufferUsageFlagBits::eStorageBuffer);
         std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer.back().get()));
         jointsBuffer.emplace_back(physicalDevice, device, sizeof(glm::mat4) * joints.size(), vk::BufferUsageFlagBits::eStorageBuffer);
@@ -214,16 +214,20 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
     uniformBuffer.emplace(physicalDevice, device, sizeof(SceneData) * renderTargets.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eUniformBuffer);
     SceneData *dat = static_cast<SceneData *>(uniformBuffer->get());
 
+    const auto &textures = modelManager.getTextureImageViews();
+
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         vk::DescriptorBufferInfo descUniformBufInfo[1];
         descUniformBufInfo[0].buffer = uniformBuffer->getBuffer();
         descUniformBufInfo[0].offset = 0;
         descUniformBufInfo[0].range = sizeof(SceneData);
 
-        vk::DescriptorImageInfo descImgInfo[1];
-        descImgInfo[0].sampler = testSampler.get();
-        descImgInfo[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-        descImgInfo[0].imageView = testTextureImgView->get();
+        std::vector<vk::DescriptorImageInfo> descImgInfo(textures.size());
+        for(uint32_t i = 0; i < textures.size(); i++) {
+            descImgInfo[i].sampler = testSampler.get();
+            descImgInfo[i].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            descImgInfo[i].imageView = textures[i].get();
+        }
 
         vk::DescriptorBufferInfo descObjectBufInfo[1];
         descObjectBufInfo[0].buffer = objectsBuffer[i].getBuffer();
@@ -252,7 +256,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         writeDescSet[1].dstArrayElement = 0;
         writeDescSet[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
         writeDescSet[1].descriptorCount = std::size(descImgInfo);
-        writeDescSet[1].pImageInfo = descImgInfo;
+        writeDescSet[1].pImageInfo = descImgInfo.data();
         writeDescSet[2].dstSet = descSets[i].get();
         writeDescSet[2].dstBinding = 2;
         writeDescSet[2].dstArrayElement = 0;
@@ -277,7 +281,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
 
     for (uint32_t j = 0; j < renderTargets.size(); j++) {
         for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(2.0f, 0.0f, -2.0f), glm::vec3(-0.6f, 0.0f, 0.8f), glm::vec3(0.0f, -1.0f, 0.0f));
             dat[j * coreflightFramesNum + i].proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
         }
     }
