@@ -2,7 +2,7 @@
 #include "Buffer.hpp"
 #include "Helper.hpp"
 
-Image::Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D extent, uint32_t arrayNum, vk::ImageUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq) {
+Image::Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D extent, uint32_t arrayNum, vk::Format format, vk::ImageUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq) {
     vk::ImageCreateInfo imgCreateInfo;
     imgCreateInfo.imageType = vk::ImageType::e2D;
     imgCreateInfo.extent = extent;
@@ -26,12 +26,12 @@ Image::Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D exte
 }
 
 ReadonlyImage::ReadonlyImage(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::Extent3D extent, uint32_t arrayNum, vk::ImageUsageFlags usage, vk::Fence fence)
-    : Image{physDevice, device, extent, arrayNum, usage | vk::ImageUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
+    : Image{physDevice, device, extent, arrayNum, vk::Format::eR8G8B8A8Srgb, usage | vk::ImageUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
     write(physDevice, device, queue, cmdBuf, datSrc, extent, arrayNum, 0, fence);
 }
 
 ReadonlyImage::ReadonlyImage(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D extent, uint32_t arrayNum, vk::ImageUsageFlags usage)
-    : Image{physDevice, device, extent, arrayNum, usage | vk::ImageUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
+    : Image{physDevice, device, extent, arrayNum, vk::Format::eR8G8B8A8Srgb, usage | vk::ImageUsageFlagBits::eTransferDst, vk::MemoryPropertyFlagBits::eDeviceLocal} {
 }
 
 void ReadonlyImage::write(vk::PhysicalDevice physDevice, vk::Device device, vk::Queue queue, vk::CommandBuffer cmdBuf, void *datSrc, vk::Extent3D extent, uint32_t arrayNum, vk::DeviceSize offset, vk::Fence fence) {

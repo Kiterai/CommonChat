@@ -9,9 +9,10 @@ class Image {
   protected:
     vk::UniqueImage image;
     vk::UniqueDeviceMemory memory;
+    vk::Format format;
 
   public:
-    Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D extent, uint32_t arrayNum, vk::ImageUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq);
+    Image(vk::PhysicalDevice physDevice, vk::Device device, vk::Extent3D extent, uint32_t arrayNum, vk::Format format, vk::ImageUsageFlags usage, std::optional<vk::MemoryPropertyFlags> memFlagReq);
     Image(Image&&) = default;
 
     vk::Image getImage() const { return image.get(); };
