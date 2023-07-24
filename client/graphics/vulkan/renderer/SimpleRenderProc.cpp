@@ -192,7 +192,7 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
 
 SimpleRenderProc::SimpleRenderProc(vk::PhysicalDevice _physDevice, vk::Device _device, vk::DescriptorSetLayout descLayout, vk::DescriptorSetLayout assetDescLayout)
     : physDevice(_physDevice), device(_device) {
-    pipelinelayout = createPipelineLayout(device, {descLayout});
+    pipelinelayout = createPipelineLayout(device, {descLayout, assetDescLayout});
 
     auto featVertShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.vert.spv"); });
     auto featFragShader = std::async(std::launch::async, [this]() { return createShaderModuleFromFile(device, "shader.frag.spv"); });
@@ -238,7 +238,7 @@ void SimpleRenderProc::render(const RenderDetails &rd, const RenderTarget &rt, c
                              {rd.positionVertBuf, rd.normalVertBuf, rd.texcoordVertBuf[0], rd.jointsVertBuf[0], rd.weightsVertBuf[0]},
                              {0, 0, 0, 0, 0});
     cmdBuf.bindIndexBuffer(rd.indexBuf, 0, vk::IndexType::eUint32);
-    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet}, rd.dynamicOfs);
+    cmdBuf.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelinelayout.get(), 0, {rd.descSet, rd.assetDescSet}, rd.dynamicOfs);
     cmdBuf.bindPipeline(vk::PipelineBindPoint::eGraphics, rprtd.pipeline.get());
 
     cmdBuf.drawIndexedIndirect(rd.drawBuf, rd.drawBufOffset, rd.modelsCount, rd.drawBufStride);

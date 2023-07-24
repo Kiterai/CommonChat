@@ -2,7 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_EXT_nonuniform_qualifier : enable
 
-layout(set = 0, binding = 1) uniform sampler2D texSampler[];
+layout(set = 1, binding = 3) uniform sampler2D texSampler[];
 
 layout(location = 2) in vec2 inTexcoord;
 layout(location = 4) flat in uint inTexIndex;

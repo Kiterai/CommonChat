@@ -8,7 +8,7 @@
 
 constexpr uint32_t maxVertNum = 1048576;
 constexpr uint32_t maxIndNum = 4194304;
-constexpr uint32_t maxTexNum = 128;
+constexpr uint32_t maxTexNum = 32;
 constexpr uint32_t maxModelNum = 1024;
 constexpr uint32_t maxPrimitiveNum = 32768;
 constexpr uint32_t maxMaterialNum = 32768;
