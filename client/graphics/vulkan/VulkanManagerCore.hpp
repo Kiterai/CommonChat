@@ -25,10 +25,6 @@ class VulkanManagerCore {
 
     vk::UniquePipelineLayout pipelinelayout;
 
-    std::unique_ptr<IRenderProc> defaultRenderProc;
-    std::vector<RenderTarget> renderTargets;
-    std::vector<RenderProcRenderTargetDependant> rprtd;
-
     vk::UniqueCommandBuffer assetManageCmdBuf;
     vk::UniqueFence assetManageFence;
 
@@ -43,6 +39,10 @@ class VulkanManagerCore {
     vk::UniqueSampler testSampler;
 
     ModelManager modelManager;
+
+    std::unique_ptr<IRenderProc> defaultRenderProc;
+    std::vector<RenderTarget> renderTargets;
+    std::vector<RenderProcRenderTargetDependant> rprtd;
 
   public:
     VulkanManagerCore(

@@ -133,10 +133,10 @@ VulkanManagerCore::VulkanManagerCore(
       descPool{createDescPool(device)},
       descLayout{createDescLayout(device)},
       descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
-      defaultRenderProc{new SimpleRenderProc{physicalDevice, device, descLayout.get()}},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])},
-      modelManager{physicalDevice, device, descPool.get(), graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get()} {
+      modelManager{physicalDevice, device, descPool.get(), graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get()},
+      defaultRenderProc{new SimpleRenderProc{physicalDevice, device, descLayout.get(), modelManager.getDescSetLayout()}} {
 
     auto modelInfo = modelManager.loadModelFromGlbFile("AliciaSolid.vrm", graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get());
 
@@ -223,7 +223,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         descUniformBufInfo[0].range = sizeof(SceneData);
 
         std::vector<vk::DescriptorImageInfo> descImgInfo(textures.size());
-        for(uint32_t i = 0; i < textures.size(); i++) {
+        for (uint32_t i = 0; i < textures.size(); i++) {
             descImgInfo[i].sampler = testSampler.get();
             descImgInfo[i].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
             descImgInfo[i].imageView = textures[i].get();
@@ -238,7 +238,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         descJointBufInfo[0].buffer = jointsBuffer[i].getBuffer();
         descJointBufInfo[0].offset = 0;
         descJointBufInfo[0].range = sizeof(glm::mat4) * joints.size();
-        
+
         vk::DescriptorBufferInfo descMeshBufInfo[1];
         descMeshBufInfo[0].buffer = meshesBuffer[i].getBuffer();
         descMeshBufInfo[0].offset = 0;

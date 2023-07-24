@@ -190,7 +190,7 @@ vk::UniquePipeline SimpleRenderProc::createPipeline(vk::Device device, vk::Exten
     return device.createGraphicsPipelineUnique(nullptr, pipelineCreateInfo).value;
 }
 
-SimpleRenderProc::SimpleRenderProc(vk::PhysicalDevice _physDevice, vk::Device _device, vk::DescriptorSetLayout descLayout)
+SimpleRenderProc::SimpleRenderProc(vk::PhysicalDevice _physDevice, vk::Device _device, vk::DescriptorSetLayout descLayout, vk::DescriptorSetLayout assetDescLayout)
     : physDevice(_physDevice), device(_device) {
     pipelinelayout = createPipelineLayout(device, {descLayout});
 

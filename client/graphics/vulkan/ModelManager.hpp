@@ -52,6 +52,7 @@ class ModelManager {
     void prepareRender(RenderDetails &rd);
     ModelInfo loadModelFromGlbFile(const std::filesystem::path path, vk::Queue queue, vk::CommandBuffer cmdBuf, vk::Fence fence);
     const auto &getTextureImageViews() const { return textureImageViews; } // no longer used;
+    const auto &getDescSetLayout() const { return modelDescSetLayout.get(); }
 };
 
 #endif VULKAN_MODEL_MANAGER_HPP
