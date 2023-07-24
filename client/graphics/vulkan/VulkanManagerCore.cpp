@@ -87,7 +87,7 @@ std::vector<vk::UniqueDescriptorSet> createDescSets(vk::Device device, vk::Descr
     return device.allocateDescriptorSetsUnique(allocInfo);
 }
 
-RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint, vk::PipelineLayout pipelinelayout) {
+RenderTarget createRenderTargetFromHint(vk::Device device, const RenderTargetHint hint) {
     RenderTarget rt;
 
     rt.extent = hint.extent;
@@ -203,7 +203,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
     renderTargets.clear();
     std::transform(hints.begin(), hints.end(), std::back_inserter(renderTargets),
                    [this](const RenderTargetHint &hint) {
-                       return createRenderTargetFromHint(device, hint, pipelinelayout.get());
+                       return createRenderTargetFromHint(device, hint);
                    });
     std::transform(renderTargets.begin(), renderTargets.end(), std::back_inserter(rprtd),
                    [this](const RenderTarget &rt) {

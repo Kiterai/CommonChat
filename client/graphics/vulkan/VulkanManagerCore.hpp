@@ -23,8 +23,6 @@ class VulkanManagerCore {
     vk::UniqueDescriptorSetLayout descLayout;
     std::vector<vk::UniqueDescriptorSet> descSets;
 
-    vk::UniquePipelineLayout pipelinelayout;
-
     vk::UniqueCommandBuffer assetManageCmdBuf;
     vk::UniqueFence assetManageFence;
 
