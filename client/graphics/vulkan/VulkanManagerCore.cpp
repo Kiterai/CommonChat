@@ -49,27 +49,23 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
 }
 
 vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
-    vk::DescriptorSetLayoutBinding binding[5];
+    vk::DescriptorSetLayoutBinding binding[4];
     binding[0].binding = 0;
     binding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
     binding[0].descriptorCount = 1;
     binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
-    binding[1].binding = 1;
-    binding[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-    binding[1].descriptorCount = 8;
-    binding[1].stageFlags = vk::ShaderStageFlagBits::eFragment;
-    binding[2].binding = 2;
+    binding[1].binding = 2;
+    binding[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[1].descriptorCount = 1;
+    binding[1].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    binding[2].binding = 3;
     binding[2].descriptorType = vk::DescriptorType::eStorageBuffer;
     binding[2].descriptorCount = 1;
     binding[2].stageFlags = vk::ShaderStageFlagBits::eVertex;
-    binding[3].binding = 3;
+    binding[3].binding = 4;
     binding[3].descriptorType = vk::DescriptorType::eStorageBuffer;
     binding[3].descriptorCount = 1;
     binding[3].stageFlags = vk::ShaderStageFlagBits::eVertex;
-    binding[4].binding = 4;
-    binding[4].descriptorType = vk::DescriptorType::eStorageBuffer;
-    binding[4].descriptorCount = 1;
-    binding[4].stageFlags = vk::ShaderStageFlagBits::eVertex;
 
     vk::DescriptorSetLayoutCreateInfo createInfo;
     createInfo.bindingCount = std::size(binding);
@@ -171,19 +167,6 @@ VulkanManagerCore::VulkanManagerCore(
     std::copy(indirectDraws.begin(), indirectDraws.end(), static_cast<vk::DrawIndexedIndirectCommand *>(drawIndirectBuffer.value().get()));
     drawIndirectBuffer.value().flush<1>(device, {{{0, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size()}}});
 
-    {
-        int texWidth, texHeight, texChannels;
-        auto pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-
-        testTexture.emplace(physicalDevice, device, graphicsQueue, assetManageCmdBuf.get(), pixels,
-                            vk::Extent3D{static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1}, 1,
-                            vk::ImageUsageFlagBits::eSampled, assetManageFence.get());
-
-        stbi_image_free(pixels);
-    }
-    testTextureImgView = createImageViewFromImage(device, testTexture->getImage(), vk::Format::eR8G8B8A8Srgb, 1);
-    testSampler = createSampler(device);
-
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
         meshesBuffer.emplace_back(physicalDevice, device, sizeof(MeshData) * meshes.size(), vk::BufferUsageFlagBits::eStorageBuffer);
         std::copy(meshes.begin(), meshes.end(), static_cast<MeshData *>(meshesBuffer.back().get()));
@@ -222,13 +205,6 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         descUniformBufInfo[0].offset = 0;
         descUniformBufInfo[0].range = sizeof(SceneData);
 
-        std::vector<vk::DescriptorImageInfo> descImgInfo(textures.size());
-        for (uint32_t i = 0; i < textures.size(); i++) {
-            descImgInfo[i].sampler = testSampler.get();
-            descImgInfo[i].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-            descImgInfo[i].imageView = textures[i].get();
-        }
-
         vk::DescriptorBufferInfo descObjectBufInfo[1];
         descObjectBufInfo[0].buffer = objectsBuffer[i].getBuffer();
         descObjectBufInfo[0].offset = 0;
@@ -244,7 +220,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         descMeshBufInfo[0].offset = 0;
         descMeshBufInfo[0].range = sizeof(MeshData) * meshes.size();
 
-        vk::WriteDescriptorSet writeDescSet[5];
+        vk::WriteDescriptorSet writeDescSet[4];
         writeDescSet[0].dstSet = descSets[i].get();
         writeDescSet[0].dstBinding = 0;
         writeDescSet[0].dstArrayElement = 0;
@@ -252,29 +228,23 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
         writeDescSet[0].descriptorCount = std::size(descUniformBufInfo);
         writeDescSet[0].pBufferInfo = descUniformBufInfo;
         writeDescSet[1].dstSet = descSets[i].get();
-        writeDescSet[1].dstBinding = 1;
+        writeDescSet[1].dstBinding = 2;
         writeDescSet[1].dstArrayElement = 0;
-        writeDescSet[1].descriptorType = vk::DescriptorType::eCombinedImageSampler;
-        writeDescSet[1].descriptorCount = std::size(descImgInfo);
-        writeDescSet[1].pImageInfo = descImgInfo.data();
+        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[1].descriptorCount = std::size(descObjectBufInfo);
+        writeDescSet[1].pBufferInfo = descObjectBufInfo;
         writeDescSet[2].dstSet = descSets[i].get();
-        writeDescSet[2].dstBinding = 2;
+        writeDescSet[2].dstBinding = 3;
         writeDescSet[2].dstArrayElement = 0;
         writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBuffer;
-        writeDescSet[2].descriptorCount = std::size(descObjectBufInfo);
-        writeDescSet[2].pBufferInfo = descObjectBufInfo;
+        writeDescSet[2].descriptorCount = std::size(descJointBufInfo);
+        writeDescSet[2].pBufferInfo = descJointBufInfo;
         writeDescSet[3].dstSet = descSets[i].get();
-        writeDescSet[3].dstBinding = 3;
+        writeDescSet[3].dstBinding = 4;
         writeDescSet[3].dstArrayElement = 0;
         writeDescSet[3].descriptorType = vk::DescriptorType::eStorageBuffer;
-        writeDescSet[3].descriptorCount = std::size(descJointBufInfo);
-        writeDescSet[3].pBufferInfo = descJointBufInfo;
-        writeDescSet[4].dstSet = descSets[i].get();
-        writeDescSet[4].dstBinding = 4;
-        writeDescSet[4].dstArrayElement = 0;
-        writeDescSet[4].descriptorType = vk::DescriptorType::eStorageBuffer;
-        writeDescSet[4].descriptorCount = std::size(descMeshBufInfo);
-        writeDescSet[4].pBufferInfo = descMeshBufInfo;
+        writeDescSet[3].descriptorCount = std::size(descMeshBufInfo);
+        writeDescSet[3].pBufferInfo = descMeshBufInfo;
 
         device.updateDescriptorSets(writeDescSet, {});
     }

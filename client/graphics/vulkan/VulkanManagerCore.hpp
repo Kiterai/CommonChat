@@ -32,10 +32,6 @@ class VulkanManagerCore {
     std::vector<CommunicationBuffer> objectsBuffer;
     std::vector<CommunicationBuffer> jointsBuffer;
 
-    std::optional<ReadonlyImage> testTexture;
-    std::optional<vk::UniqueImageView> testTextureImgView;
-    vk::UniqueSampler testSampler;
-
     ModelManager modelManager;
 
     std::unique_ptr<IRenderProc> defaultRenderProc;
