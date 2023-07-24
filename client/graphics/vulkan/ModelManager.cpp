@@ -283,8 +283,21 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
                                   vk::ImageUsageFlagBits::eSampled, fence);
         stbi_image_free(pImage);
     }
-    for (uint32_t i = 0; i < textureAtlas.size(); i++)
+    std::vector<vk::DescriptorImageInfo> textureDesc(textureAtlas.size());
+    for (uint32_t i = 0; i < textureAtlas.size(); i++) {
         textureImageViews.emplace_back(createImageViewFromImage(device, textureAtlas[i].getImage(), vk::Format::eR8G8B8A8Srgb, 1));
+        textureDesc[i].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+        textureDesc[i].imageView = textureImageViews.back().get();
+        textureDesc[i].sampler = defaultSampler.get();
+    }
+    vk::WriteDescriptorSet writeDescSet;
+    writeDescSet.dstSet = modelDescSet.get();
+    writeDescSet.dstBinding = 3;
+    writeDescSet.dstArrayElement = 0;
+    writeDescSet.descriptorCount = textureDesc.size();
+    writeDescSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+    writeDescSet.pImageInfo = textureDesc.data();
+    device.updateDescriptorSets({writeDescSet}, {});
 
     MeshPointer pCurrentPrimitive = pPrimitiveBase;
     for (const auto &mesh : asset->meshes) {
