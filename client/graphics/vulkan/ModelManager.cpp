@@ -30,7 +30,7 @@ struct PrimitiveInfo {
     uint32_t jointInfoBaseIndex;
 };
 
-struct ModelInfo {
+struct ModelInfoForShader {
     uint32_t primitiveNum;
     uint32_t primitiveInfoBaseIndex;
 };
@@ -70,7 +70,7 @@ vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
     binding.push_back(buildDescSetLayoutBinding(
         3,
         vk::DescriptorType::eCombinedImageSampler,
-        1,
+        maxTexNum,
         vk::ShaderStageFlagBits::eFragment));
     // Joints Info
     binding.push_back(buildDescSetLayoutBinding(
@@ -138,7 +138,7 @@ ModelManager::ModelManager(vk::PhysicalDevice physDevice, vk::Device device, vk:
     modelWeightsVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::vec4) * maxVertNum);
     modelIndexBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eIndexBuffer, sizeof(uint32_t) * maxIndNum);
 
-    modelInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(ModelInfo) * maxModelNum);
+    modelInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(ModelInfoForShader) * maxModelNum);
     primitiveInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(PrimitiveInfo) * maxPrimitiveNum);
     materialInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(MaterialInfo) * maxMaterialNum);
     jointsInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(JointInfo) * maxJointNum);
@@ -163,9 +163,9 @@ ModelManager::ModelManager(vk::PhysicalDevice physDevice, vk::Device device, vk:
         vk::DescriptorBufferInfo modelBufDesc;
         modelBufDesc.buffer = modelInfoBuffer->getBuffer();
         modelBufDesc.offset = 0;
-        modelBufDesc.range = sizeof(ModelInfo) * maxModelNum;
+        modelBufDesc.range = sizeof(ModelInfoForShader) * maxModelNum;
         vk::DescriptorBufferInfo primitiveBufDesc;
-        primitiveBufDesc.buffer = modelInfoBuffer->getBuffer();
+        primitiveBufDesc.buffer = primitiveInfoBuffer->getBuffer();
         primitiveBufDesc.offset = 0;
         primitiveBufDesc.range = sizeof(PrimitiveInfo) * maxPrimitiveNum;
         vk::DescriptorBufferInfo materialBufDesc;
@@ -229,6 +229,7 @@ void ModelManager::prepareRender(RenderDetails &rd) {
     rd.jointsVertBuf[0] = modelJointsVertBuffer.value().getBuffer();
     rd.weightsVertBuf[0] = modelWeightsVertBuffer.value().getBuffer();
     rd.indexBuf = modelIndexBuffer.value().getBuffer();
+    rd.assetDescSet = modelDescSet.get();
 }
 
 ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem::path path, vk::Queue queue, vk::CommandBuffer cmdBuf, vk::Fence fence) {

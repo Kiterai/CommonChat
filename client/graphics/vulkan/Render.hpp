@@ -38,7 +38,7 @@ struct RenderDetails {
     uint32_t drawBufOffset;
     uint32_t drawBufStride;
 
-    vk::DescriptorSet descSet;
+    vk::DescriptorSet descSet, assetDescSet;
 
     std::array<uint32_t, 1> dynamicOfs;
 };
