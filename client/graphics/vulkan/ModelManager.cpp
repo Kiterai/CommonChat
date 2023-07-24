@@ -8,15 +8,214 @@
 
 constexpr uint32_t maxVertNum = 1048576;
 constexpr uint32_t maxIndNum = 4194304;
-constexpr uint32_t maxTexNum = 4194304;
+constexpr uint32_t maxTexNum = 128;
+constexpr uint32_t maxModelNum = 1024;
+constexpr uint32_t maxPrimitiveNum = 32768;
+constexpr uint32_t maxMaterialNum = 32768;
+constexpr uint32_t maxJointNum = 65536;
 
-ModelManager::ModelManager(vk::PhysicalDevice physDevice, vk::Device device) : physDevice{physDevice}, device{device} {
+struct JointInfo {
+    glm::mat4 inverseBindMatrix;
+    uint32_t nodeIndex;
+};
+
+struct MaterialInfo {
+    uint32_t colorTextureIndex;
+};
+
+struct PrimitiveInfo {
+    uint32_t materialIndex;
+    uint32_t morphInfoNum;
+    uint32_t morphInfoBaseIndex;
+    uint32_t jointInfoBaseIndex;
+};
+
+struct ModelInfo {
+    uint32_t primitiveNum;
+    uint32_t primitiveInfoBaseIndex;
+};
+
+namespace {
+
+vk::DescriptorSetLayoutBinding buildDescSetLayoutBinding(uint32_t bindingNum, vk::DescriptorType type, uint32_t count, vk::ShaderStageFlags stage) {
+    vk::DescriptorSetLayoutBinding binding;
+    binding.binding = bindingNum;
+    binding.descriptorType = type;
+    binding.descriptorCount = count;
+    binding.stageFlags = stage;
+    return binding;
+}
+
+vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
+    std::vector<vk::DescriptorSetLayoutBinding> binding;
+    // Model
+    binding.push_back(buildDescSetLayoutBinding(
+        0,
+        vk::DescriptorType::eStorageBuffer,
+        1,
+        vk::ShaderStageFlagBits::eCompute));
+    // Primitives Info
+    binding.push_back(buildDescSetLayoutBinding(
+        1,
+        vk::DescriptorType::eStorageBuffer,
+        1,
+        vk::ShaderStageFlagBits::eFragment));
+    // Material
+    binding.push_back(buildDescSetLayoutBinding(
+        2,
+        vk::DescriptorType::eStorageBuffer,
+        1,
+        vk::ShaderStageFlagBits::eVertex));
+    // Texture
+    binding.push_back(buildDescSetLayoutBinding(
+        3,
+        vk::DescriptorType::eCombinedImageSampler,
+        1,
+        vk::ShaderStageFlagBits::eFragment));
+    // Joints Info
+    binding.push_back(buildDescSetLayoutBinding(
+        4,
+        vk::DescriptorType::eStorageBuffer,
+        1,
+        vk::ShaderStageFlagBits::eVertex));
+    // // Morph Targets (POSITION)
+    // binding.push_back(buildDescSetLayoutBinding(
+    //     5,
+    //     vk::DescriptorType::eStorageBuffer,
+    //     1,
+    //     vk::ShaderStageFlagBits::eVertex));
+    // // Morph Targets (NORMAL)
+    // binding.push_back(buildDescSetLayoutBinding(
+    //     6,
+    //     vk::DescriptorType::eStorageBuffer,
+    //     1,
+    //     vk::ShaderStageFlagBits::eVertex));
+
+    vk::DescriptorSetLayoutCreateInfo createInfo;
+    createInfo.bindingCount = std::size(binding);
+    createInfo.pBindings = binding.data();
+
+    return device.createDescriptorSetLayoutUnique(createInfo);
+}
+
+std::vector<vk::UniqueDescriptorSet> createDescSets(vk::Device device, vk::DescriptorPool pool, vk::DescriptorSetLayout layout, uint32_t n) {
+    std::vector<vk::DescriptorSetLayout> layouts(n, layout);
+    vk::DescriptorSetAllocateInfo allocInfo;
+    allocInfo.descriptorPool = pool;
+    allocInfo.pSetLayouts = layouts.data();
+    allocInfo.descriptorSetCount = layouts.size();
+    return device.allocateDescriptorSetsUnique(allocInfo);
+}
+
+vk::UniqueSampler createSampler(vk::Device device) {
+    vk::SamplerCreateInfo createInfo;
+    createInfo.magFilter = vk::Filter::eLinear;
+    createInfo.minFilter = vk::Filter::eLinear;
+    createInfo.addressModeU = vk::SamplerAddressMode::eRepeat;
+    createInfo.addressModeV = vk::SamplerAddressMode::eRepeat;
+    createInfo.addressModeW = vk::SamplerAddressMode::eRepeat;
+    createInfo.anisotropyEnable = false;
+    createInfo.maxAnisotropy = 1.0f;
+    createInfo.borderColor = vk::BorderColor::eIntOpaqueBlack;
+    createInfo.unnormalizedCoordinates = false;
+    createInfo.compareEnable = false;
+    createInfo.compareOp = vk::CompareOp::eAlways;
+    createInfo.mipmapMode = vk::SamplerMipmapMode::eLinear;
+    createInfo.mipLodBias = 0.0f;
+    createInfo.minLod = 0.0f;
+    createInfo.maxLod = 0.0f;
+
+    return device.createSamplerUnique(createInfo);
+}
+
+} // namespace
+
+ModelManager::ModelManager(vk::PhysicalDevice physDevice, vk::Device device, vk::DescriptorPool pool, vk::Queue queue, vk::CommandBuffer cmdBuf, vk::Fence fence) : physDevice{physDevice}, device{device} {
     modelPosVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::vec3) * maxVertNum);
     modelNormVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::vec3) * maxVertNum);
     modelTexcoordVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::vec2) * maxVertNum);
     modelJointsVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::u16vec4) * maxVertNum);
     modelWeightsVertBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eVertexBuffer, sizeof(glm::vec4) * maxVertNum);
     modelIndexBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eIndexBuffer, sizeof(uint32_t) * maxIndNum);
+
+    modelInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(ModelInfo) * maxModelNum);
+    primitiveInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(PrimitiveInfo) * maxPrimitiveNum);
+    materialInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(MaterialInfo) * maxMaterialNum);
+    jointsInfoBuffer.emplace(physDevice, device, vk::BufferUsageFlagBits::eStorageBuffer, sizeof(JointInfo) * maxJointNum);
+
+    {
+        int texWidth, texHeight, texChannels;
+        auto pixels = stbi_load("texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+        defaultTexture.emplace(physDevice, device, queue, cmdBuf, pixels,
+                               vk::Extent3D{static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), 1}, 1,
+                               vk::ImageUsageFlagBits::eSampled, fence);
+
+        stbi_image_free(pixels);
+    }
+    defaultTextureImgView = createImageViewFromImage(device, defaultTexture->getImage(), vk::Format::eR8G8B8A8Srgb, 1);
+    defaultSampler = createSampler(device);
+
+    modelDescSetLayout = createDescLayout(device);
+    modelDescSet = std::move(createDescSets(device, pool, modelDescSetLayout.get(), 1)[0]);
+
+    {
+        vk::DescriptorBufferInfo modelBufDesc;
+        modelBufDesc.buffer = modelInfoBuffer->getBuffer();
+        modelBufDesc.offset = 0;
+        modelBufDesc.range = sizeof(ModelInfo) * maxModelNum;
+        vk::DescriptorBufferInfo primitiveBufDesc;
+        primitiveBufDesc.buffer = modelInfoBuffer->getBuffer();
+        primitiveBufDesc.offset = 0;
+        primitiveBufDesc.range = sizeof(PrimitiveInfo) * maxPrimitiveNum;
+        vk::DescriptorBufferInfo materialBufDesc;
+        materialBufDesc.buffer = materialInfoBuffer->getBuffer();
+        materialBufDesc.offset = 0;
+        materialBufDesc.range = sizeof(MaterialInfo) * maxMaterialNum;
+        vk::DescriptorImageInfo textureDesc[maxTexNum];
+        for (uint32_t i = 0; i < maxTexNum; i++) {
+            textureDesc[i].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+            textureDesc[i].imageView = defaultTextureImgView.get();
+            textureDesc[i].sampler = defaultSampler.get();
+        }
+        vk::DescriptorBufferInfo jointsBufDesc;
+        jointsBufDesc.buffer = jointsInfoBuffer->getBuffer();
+        jointsBufDesc.offset = 0;
+        jointsBufDesc.range = sizeof(JointInfo) * maxJointNum;
+
+        vk::WriteDescriptorSet writeDescSet[5];
+        writeDescSet[0].dstSet = modelDescSet.get();
+        writeDescSet[0].dstBinding = 0;
+        writeDescSet[0].dstArrayElement = 0;
+        writeDescSet[0].descriptorCount = 1;
+        writeDescSet[0].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[0].pBufferInfo = &modelBufDesc;
+        writeDescSet[1].dstSet = modelDescSet.get();
+        writeDescSet[1].dstBinding = 1;
+        writeDescSet[1].dstArrayElement = 0;
+        writeDescSet[1].descriptorCount = 1;
+        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[1].pBufferInfo = &primitiveBufDesc;
+        writeDescSet[2].dstSet = modelDescSet.get();
+        writeDescSet[2].dstBinding = 2;
+        writeDescSet[2].dstArrayElement = 0;
+        writeDescSet[2].descriptorCount = 1;
+        writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[2].pBufferInfo = &materialBufDesc;
+        writeDescSet[3].dstSet = modelDescSet.get();
+        writeDescSet[3].dstBinding = 3;
+        writeDescSet[3].dstArrayElement = 0;
+        writeDescSet[3].descriptorCount = maxTexNum;
+        writeDescSet[3].descriptorType = vk::DescriptorType::eCombinedImageSampler;
+        writeDescSet[3].pImageInfo = textureDesc;
+        writeDescSet[4].dstSet = modelDescSet.get();
+        writeDescSet[4].dstBinding = 4;
+        writeDescSet[4].dstArrayElement = 0;
+        writeDescSet[4].descriptorCount = 1;
+        writeDescSet[4].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[4].pBufferInfo = &jointsBufDesc;
+        device.updateDescriptorSets(writeDescSet, {});
+    }
 }
 
 ModelManager::MeshPointer ModelManager::allocate(uint32_t vertNum, uint32_t indNum) {
@@ -67,7 +266,7 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     }
 
     ModelInfo info;
-    info.jointNum = asset->nodes.size();
+    info.nodeNum = asset->nodes.size();
 
     MeshPointer pPrimitiveBase = allocate(vertNumSum, indNumSum);
 

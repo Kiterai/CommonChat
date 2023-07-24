@@ -136,7 +136,7 @@ VulkanManagerCore::VulkanManagerCore(
       defaultRenderProc{new SimpleRenderProc{physicalDevice, device, descLayout.get()}},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])},
-      modelManager{physicalDevice, device} {
+      modelManager{physicalDevice, device, descPool.get(), graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get()} {
 
     auto modelInfo = modelManager.loadModelFromGlbFile("AliciaSolid.vrm", graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get());
 
@@ -161,7 +161,7 @@ VulkanManagerCore::VulkanManagerCore(
         mesh.textureIndex = primitive.textureIndex;
         meshes.push_back(mesh);
     }
-    for (uint32_t i = 0; i < modelInfo.jointNum; i++) {
+    for (uint32_t i = 0; i < modelInfo.nodeNum; i++) {
         joints.push_back(glm::identity<glm::mat4>());
     }
 
