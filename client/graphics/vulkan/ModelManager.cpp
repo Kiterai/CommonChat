@@ -265,6 +265,11 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
             }
         }
     }
+    std::vector<uint32_t> meshToSkin(asset->meshes.size());
+    for (const auto &node : asset->nodes) {
+        if (node.meshIndex.has_value() & node.skinIndex.has_value())
+            meshToSkin[*node.meshIndex] = *node.skinIndex;
+    }
 
     ModelInfo info;
     info.nodeNum = asset->nodes.size();
@@ -300,6 +305,7 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     device.updateDescriptorSets({writeDescSet}, {});
 
     MeshPointer pCurrentPrimitive = pPrimitiveBase;
+    uint32_t meshIndex = 0; 
     for (const auto &mesh : asset->meshes) {
         for (const auto &primitive : mesh.primitives) {
             for (const auto &[attrName, attrAccessorIndex] : primitive.attributes) {
@@ -317,8 +323,15 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
                                                    static_cast<const void *>(attrData.data()), attrData.size_bytes(),
                                                    pCurrentPrimitive.vertexBase * sizeof(glm::vec2), fence);
                 } else if (attrName == "JOINTS_0") {
+                    std::vector<uint16_t> convertedJointData(attrData.size_bytes() / 2);
+                    auto jointBuffer = reinterpret_cast<const uint16_t *>(attrData.data());
+
+                    for (uint32_t i = 0; i < attrData.size_bytes() / 2; i++) {
+                        convertedJointData[i] = asset->skins[meshToSkin[meshIndex]].joints[jointBuffer[i]];
+                    }
+
                     modelJointsVertBuffer->write(physDevice, device, queue, cmdBuf,
-                                                 static_cast<const void *>(attrData.data()), attrData.size_bytes(),
+                                                 static_cast<const void *>(convertedJointData.data()), convertedJointData.size() * sizeof(uint16_t),
                                                  pCurrentPrimitive.vertexBase * sizeof(glm::u16vec4), fence);
                 } else if (attrName == "WEIGHTS_0") {
                     modelWeightsVertBuffer->write(physDevice, device, queue, cmdBuf,
@@ -342,6 +355,7 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
             pCurrentPrimitive.vertexBase += asset->accessors[primitive.attributes.begin()->second].count;
             pCurrentPrimitive.IndexBase += asset->accessors[primitive.indicesAccessor.value()].count;
         }
+        meshIndex++;
     }
 
     return info;
