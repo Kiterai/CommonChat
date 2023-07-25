@@ -272,7 +272,22 @@ ModelManager::ModelInfo ModelManager::loadModelFromGlbFile(const std::filesystem
     }
 
     ModelInfo info;
-    info.nodeNum = asset->nodes.size();
+    info.nodes.resize(asset->nodes.size());
+    for(uint32_t i = 0; i < asset->nodes.size(); i++) {
+        const auto& trs = std::get<fastgltf::Node::TRS>(asset->nodes[i].transform);
+        for(int j = 0; j < 4; j++)
+            info.nodes[i].rotation[j] = trs.rotation[j];
+        for(int j = 0; j < 3; j++)
+            info.nodes[i].translation[j] = trs.translation[j];
+        for(const auto child : asset->nodes[i].children)
+            info.nodes[child].parent = i;
+    }
+    for(const auto &skin : asset->skins) {
+        auto inverseBindMatrices = reinterpret_cast<const glm::mat4*>(accessorToSpan(skin.inverseBindMatrices.value()).data());
+        for(uint32_t i = 0; i < skin.joints.size(); i++){
+            info.nodes[skin.joints[i]].inverseBindMatrix = inverseBindMatrices[i];
+        }
+    }
 
     MeshPointer pPrimitiveBase = allocate(vertNumSum, indNumSum);
 

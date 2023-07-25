@@ -3,6 +3,7 @@
 #include <fastgltf/parser.hpp>
 #include <future>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/quaternion.hpp>
 #include <iostream>
 #include <stb_image.h>
 using namespace std::string_literals;
@@ -157,7 +158,7 @@ VulkanManagerCore::VulkanManagerCore(
         mesh.textureIndex = primitive.textureIndex;
         meshes.push_back(mesh);
     }
-    for (uint32_t i = 0; i < modelInfo.nodeNum; i++) {
+    for (uint32_t i = 0; i < modelInfo.nodes.size(); i++) {
         joints.push_back(glm::identity<glm::mat4>());
     }
 
@@ -251,7 +252,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
 
     for (uint32_t j = 0; j < renderTargets.size(); j++) {
         for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(2.0f, 0.0f, -2.0f), glm::vec3(-0.6f, 0.0f, 0.8f), glm::vec3(0.0f, -1.0f, 0.0f));
+            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(-1.0f, 2.0f, -2.0f), glm::vec3(-0.3f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
             dat[j * coreflightFramesNum + i].proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
         }
     }

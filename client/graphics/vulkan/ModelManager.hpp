@@ -4,6 +4,7 @@
 #include "Buffer.hpp"
 #include "Image.hpp"
 #include "Render.hpp"
+#include <glm/gtc/quaternion.hpp>
 #include <fastgltf/parser.hpp>
 #include <filesystem>
 
@@ -42,9 +43,16 @@ class ModelManager {
         uint32_t textureIndex; // no longer used
     };
 
+    struct NodeInfo {
+        glm::mat4 inverseBindMatrix;
+        glm::vec3 translation;
+        glm::quat rotation;
+        int32_t parent = -1;
+    };
+
     struct ModelInfo {
         std::vector<MeshPointer> primitives;
-        uint32_t nodeNum;
+        std::vector<NodeInfo> nodes;
     };
 
     ModelManager(vk::PhysicalDevice physDevice, vk::Device device, vk::DescriptorPool pool, vk::Queue queue, vk::CommandBuffer cmdBuf, vk::Fence fence);
