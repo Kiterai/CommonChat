@@ -114,6 +114,42 @@ vk::UniqueSampler createSampler(vk::Device device) {
     return device.createSamplerUnique(createInfo);
 }
 
+struct JointConfiguration {
+    glm::quat rotation;
+    glm::vec3 translation;
+};
+
+void updateJointMatrix(const ModelManager::ModelInfo &model, const std::vector<JointConfiguration> &jointConfig, uint32_t indexBase) {
+    std::vector<int> indices;
+    std::vector<int> chCount(model.nodes.size(), 0);
+    for (uint32_t i = 0; i < model.nodes.size(); i++) {
+        if (model.nodes[i].parent != -1)
+            chCount[model.nodes[i].parent]++;
+    }
+    for (uint32_t i = 0; i < model.nodes.size(); i++) {
+        if (chCount[i] == 0)
+            indices.push_back(i);
+    }
+    for (uint32_t i = 0; i < model.nodes.size(); i++) {
+        int p = model.nodes[indices[i]].parent;
+        if (p != -1) {
+            chCount[p]--;
+            if (chCount[p] == 0)
+                indices.push_back(p);
+        }
+    }
+    std::reverse(indices.begin(), indices.end());
+    for (const auto i : indices) {
+        joints[indexBase + i] =
+            (model.nodes[i].parent == -1 ? idmat : joints[model.nodes[i].parent])
+            * glm::translate(idmat, jointConfig[i].translation) * glm::toMat4(jointConfig[i].rotation);
+        std::cout << model.nodes[i].parent << " -> " << i << std::endl;
+    }
+    for (uint32_t i = 0; i < model.nodes.size(); i++) {
+        joints[indexBase + i] *= model.nodes[i].inverseBindMatrix;
+    }
+}
+
 VulkanManagerCore::VulkanManagerCore(
     vk::Instance instance,
     vk::PhysicalDevice physicalDevice,
@@ -158,9 +194,14 @@ VulkanManagerCore::VulkanManagerCore(
         mesh.textureIndex = primitive.textureIndex;
         meshes.push_back(mesh);
     }
-    for (uint32_t i = 0; i < modelInfo.nodes.size(); i++) {
-        joints.push_back(glm::identity<glm::mat4>());
+    joints.resize(modelInfo.nodes.size(), glm::identity<glm::mat4>());
+    std::vector<JointConfiguration> jointConfig(modelInfo.nodes.size());
+    for(int i = 0; i < modelInfo.nodes.size(); i++) {
+        jointConfig[i].rotation = modelInfo.nodes[i].rotation;
+        jointConfig[i].translation = modelInfo.nodes[i].translation;
     }
+    jointConfig[51].rotation = glm::quat(sqrt(0.5f),0,-sqrt(0.5f),0);
+    updateJointMatrix(modelInfo, jointConfig, 0);
 
     drawIndirectBuffer.emplace(physicalDevice, device,
                                sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size(),
@@ -252,7 +293,7 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
 
     for (uint32_t j = 0; j < renderTargets.size(); j++) {
         for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(-1.0f, 2.0f, -2.0f), glm::vec3(-0.3f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+            dat[j * coreflightFramesNum + i].view = glm::lookAt(glm::vec3(0.0f, 1.3f, -0.9f), glm::vec3(-0.5f, 0.5f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
             dat[j * coreflightFramesNum + i].proj = glm::perspective(glm::radians(45.0f), float(renderTargets[0].extent.width) / float(renderTargets[0].extent.height), 0.1f, 10.0f);
         }
     }
