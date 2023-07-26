@@ -40,7 +40,7 @@ struct RenderDetails {
 
     vk::DescriptorSet descSet, assetDescSet;
 
-    std::array<uint32_t, 1> dynamicOfs;
+    std::array<uint32_t, 4> dynamicOfs;
 };
 
 struct SceneData {

@@ -51,20 +51,24 @@ vk::UniqueDescriptorPool createDescPool(vk::Device device) {
 
 vk::UniqueDescriptorSetLayout createDescLayout(vk::Device device) {
     vk::DescriptorSetLayoutBinding binding[4];
+    // Uniform Buffer
     binding[0].binding = 0;
     binding[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
     binding[0].descriptorCount = 1;
     binding[0].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    // Objects
     binding[1].binding = 2;
-    binding[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[1].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
     binding[1].descriptorCount = 1;
     binding[1].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    // Joints
     binding[2].binding = 3;
-    binding[2].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[2].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
     binding[2].descriptorCount = 1;
     binding[2].stageFlags = vk::ShaderStageFlagBits::eVertex;
+    // Primitives
     binding[3].binding = 4;
-    binding[3].descriptorType = vk::DescriptorType::eStorageBuffer;
+    binding[3].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
     binding[3].descriptorCount = 1;
     binding[3].stageFlags = vk::ShaderStageFlagBits::eVertex;
 
@@ -141,8 +145,7 @@ void updateJointMatrix(const ModelManager::ModelInfo &model, const std::vector<J
     std::reverse(indices.begin(), indices.end());
     for (const auto i : indices) {
         joints[indexBase + i] =
-            (model.nodes[i].parent == -1 ? idmat : joints[model.nodes[i].parent])
-            * glm::translate(idmat, jointConfig[i].translation) * glm::toMat4(jointConfig[i].rotation);
+            (model.nodes[i].parent == -1 ? idmat : joints[model.nodes[i].parent]) * glm::translate(idmat, jointConfig[i].translation) * glm::toMat4(jointConfig[i].rotation);
     }
     for (uint32_t i = 0; i < model.nodes.size(); i++) {
         joints[indexBase + i] *= model.nodes[i].inverseBindMatrix;
@@ -164,7 +167,7 @@ VulkanManagerCore::VulkanManagerCore(
       renderCmdBufFences{createFences(device, coreflightFramesNum, true)},
       descPool{createDescPool(device)},
       descLayout{createDescLayout(device)},
-      descSets{createDescSets(device, descPool.get(), descLayout.get(), coreflightFramesNum)},
+      descSet{std::move(createDescSets(device, descPool.get(), descLayout.get(), 1)[0])},
       assetManageCmdBuf{createCommandBuffer(device, renderCmdPool.get())},
       assetManageFence{std::move(createFences(device, 1, true)[0])},
       modelManager{physicalDevice, device, descPool.get(), graphicsQueue, assetManageCmdBuf.get(), assetManageFence.get()},
@@ -194,28 +197,36 @@ VulkanManagerCore::VulkanManagerCore(
         meshes.push_back(mesh);
     }
     joints.resize(modelInfo.nodes.size(), glm::identity<glm::mat4>());
+
+    // for alignment
+    objects.resize(2048);
+    meshes.resize(65536);
+    joints.resize(65536);
+
     std::vector<JointConfiguration> jointConfig(modelInfo.nodes.size());
-    for(int i = 0; i < modelInfo.nodes.size(); i++) {
+    for (int i = 0; i < modelInfo.nodes.size(); i++) {
         jointConfig[i].rotation = modelInfo.nodes[i].rotation;
         jointConfig[i].translation = modelInfo.nodes[i].translation;
     }
-    jointConfig[51].rotation = glm::quat(sqrt(0.5f),0,-sqrt(0.5f),0);
+    jointConfig[51].rotation = glm::quat(sqrt(0.5f), 0, -sqrt(0.5f), 0);
     updateJointMatrix(modelInfo, jointConfig, 0);
 
-    drawIndirectBuffer.emplace(physicalDevice, device,
-                               sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size(),
-                               vk::BufferUsageFlagBits::eIndirectBuffer);
-    std::copy(indirectDraws.begin(), indirectDraws.end(), static_cast<vk::DrawIndexedIndirectCommand *>(drawIndirectBuffer.value().get()));
-    drawIndirectBuffer.value().flush<1>(device, {{{0, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size()}}});
+    drawIndirectBuffer.emplace(physicalDevice, device, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eIndirectBuffer);
+    meshesBuffer.emplace(physicalDevice, device, sizeof(MeshData) * meshes.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eStorageBuffer);
+    objectsBuffer.emplace(physicalDevice, device, sizeof(ObjectData) * objects.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eStorageBuffer);
+    jointsBuffer.emplace(physicalDevice, device, sizeof(glm::mat4) * joints.size() * coreflightFramesNum, vk::BufferUsageFlagBits::eStorageBuffer);
 
     for (uint32_t i = 0; i < coreflightFramesNum; i++) {
-        meshesBuffer.emplace_back(physicalDevice, device, sizeof(MeshData) * meshes.size(), vk::BufferUsageFlagBits::eStorageBuffer);
-        std::copy(meshes.begin(), meshes.end(), static_cast<MeshData *>(meshesBuffer.back().get()));
-        objectsBuffer.emplace_back(physicalDevice, device, sizeof(ObjectData) * objects.size(), vk::BufferUsageFlagBits::eStorageBuffer);
-        std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer.back().get()));
-        jointsBuffer.emplace_back(physicalDevice, device, sizeof(glm::mat4) * joints.size(), vk::BufferUsageFlagBits::eStorageBuffer);
-        std::copy(joints.begin(), joints.end(), static_cast<glm::mat4 *>(jointsBuffer.back().get()));
+        std::copy(indirectDraws.begin(), indirectDraws.end(), static_cast<vk::DrawIndexedIndirectCommand *>(drawIndirectBuffer->get()) + indirectDraws.size() * i);
+        std::copy(meshes.begin(), meshes.end(), static_cast<MeshData *>(meshesBuffer->get()) + meshes.size() * i);
+        std::copy(objects.begin(), objects.end(), static_cast<ObjectData *>(objectsBuffer->get()) + objects.size() * i);
+        std::copy(joints.begin(), joints.end(), static_cast<glm::mat4 *>(jointsBuffer->get()) + joints.size() * i);
     }
+
+    drawIndirectBuffer.value().flush<1>(device, {{{0, sizeof(vk::DrawIndexedIndirectCommand) * indirectDraws.size() * coreflightFramesNum}}});
+    meshesBuffer.value().flush<1>(device, {{{0, sizeof(MeshData) * meshes.size() * coreflightFramesNum}}});
+    objectsBuffer.value().flush<1>(device, {{{0, sizeof(ObjectData) * objects.size() * coreflightFramesNum}}});
+    jointsBuffer.value().flush<1>(device, {{{0, sizeof(glm::mat4) * joints.size() * coreflightFramesNum}}});
 }
 
 VulkanManagerCore::~VulkanManagerCore() {
@@ -240,50 +251,50 @@ void VulkanManagerCore::recreateRenderTarget(std::vector<RenderTargetHint> hints
 
     const auto &textures = modelManager.getTextureImageViews();
 
-    for (uint32_t i = 0; i < coreflightFramesNum; i++) {
+    {
         vk::DescriptorBufferInfo descUniformBufInfo[1];
         descUniformBufInfo[0].buffer = uniformBuffer->getBuffer();
         descUniformBufInfo[0].offset = 0;
         descUniformBufInfo[0].range = sizeof(SceneData);
 
         vk::DescriptorBufferInfo descObjectBufInfo[1];
-        descObjectBufInfo[0].buffer = objectsBuffer[i].getBuffer();
+        descObjectBufInfo[0].buffer = objectsBuffer->getBuffer();
         descObjectBufInfo[0].offset = 0;
         descObjectBufInfo[0].range = sizeof(ObjectData) * objects.size();
 
         vk::DescriptorBufferInfo descJointBufInfo[1];
-        descJointBufInfo[0].buffer = jointsBuffer[i].getBuffer();
+        descJointBufInfo[0].buffer = jointsBuffer->getBuffer();
         descJointBufInfo[0].offset = 0;
         descJointBufInfo[0].range = sizeof(glm::mat4) * joints.size();
 
         vk::DescriptorBufferInfo descMeshBufInfo[1];
-        descMeshBufInfo[0].buffer = meshesBuffer[i].getBuffer();
+        descMeshBufInfo[0].buffer = meshesBuffer->getBuffer();
         descMeshBufInfo[0].offset = 0;
         descMeshBufInfo[0].range = sizeof(MeshData) * meshes.size();
 
         vk::WriteDescriptorSet writeDescSet[4];
-        writeDescSet[0].dstSet = descSets[i].get();
+        writeDescSet[0].dstSet = descSet.get();
         writeDescSet[0].dstBinding = 0;
         writeDescSet[0].dstArrayElement = 0;
         writeDescSet[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
         writeDescSet[0].descriptorCount = std::size(descUniformBufInfo);
         writeDescSet[0].pBufferInfo = descUniformBufInfo;
-        writeDescSet[1].dstSet = descSets[i].get();
+        writeDescSet[1].dstSet = descSet.get();
         writeDescSet[1].dstBinding = 2;
         writeDescSet[1].dstArrayElement = 0;
-        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[1].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
         writeDescSet[1].descriptorCount = std::size(descObjectBufInfo);
         writeDescSet[1].pBufferInfo = descObjectBufInfo;
-        writeDescSet[2].dstSet = descSets[i].get();
+        writeDescSet[2].dstSet = descSet.get();
         writeDescSet[2].dstBinding = 3;
         writeDescSet[2].dstArrayElement = 0;
-        writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[2].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
         writeDescSet[2].descriptorCount = std::size(descJointBufInfo);
         writeDescSet[2].pBufferInfo = descJointBufInfo;
-        writeDescSet[3].dstSet = descSets[i].get();
+        writeDescSet[3].dstSet = descSet.get();
         writeDescSet[3].dstBinding = 4;
         writeDescSet[3].dstArrayElement = 0;
-        writeDescSet[3].descriptorType = vk::DescriptorType::eStorageBuffer;
+        writeDescSet[3].descriptorType = vk::DescriptorType::eStorageBufferDynamic;
         writeDescSet[3].descriptorCount = std::size(descMeshBufInfo);
         writeDescSet[3].pBufferInfo = descMeshBufInfo;
 
@@ -304,7 +315,7 @@ vk::Fence VulkanManagerCore::render(uint32_t imageIndex,
                                     std::initializer_list<vk::Semaphore> signalSemaphores) {
     auto currentFence = renderCmdBufFences[flightIndex].get();
     auto currentCmdBuf = renderCmdBufs[flightIndex].get();
-    auto currentDescSet = descSets[flightIndex].get();
+    auto currentDescSet = descSet.get();
 
     device.waitForFences({currentFence}, true, UINT64_MAX);
     device.resetFences({currentFence});
@@ -317,7 +328,12 @@ vk::Fence VulkanManagerCore::render(uint32_t imageIndex,
             rd.cmdBuf = currentCmdBuf;
             modelManager.prepareRender(rd);
             rd.descSet = currentDescSet;
-            rd.dynamicOfs = {uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex))};
+            rd.dynamicOfs = {
+                uint32_t(sizeof(SceneData) * (targetIndex * coreflightFramesNum + flightIndex)),
+                uint32_t(sizeof(ObjectData) * objects.size() * flightIndex),
+                uint32_t(sizeof(glm::mat4) * joints.size() * flightIndex),
+                uint32_t(sizeof(MeshData) * meshes.size() * flightIndex),
+            };
             rd.imageIndex = imageIndex;
 
             rd.modelsCount = indirectDraws.size();

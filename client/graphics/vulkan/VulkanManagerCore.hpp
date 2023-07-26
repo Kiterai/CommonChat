@@ -21,16 +21,16 @@ class VulkanManagerCore {
 
     vk::UniqueDescriptorPool descPool;
     vk::UniqueDescriptorSetLayout descLayout;
-    std::vector<vk::UniqueDescriptorSet> descSets;
+    vk::UniqueDescriptorSet descSet;
 
     vk::UniqueCommandBuffer assetManageCmdBuf;
     vk::UniqueFence assetManageFence;
 
     std::optional<CommunicationBuffer> uniformBuffer;
     std::optional<CommunicationBuffer> drawIndirectBuffer;
-    std::vector<CommunicationBuffer> meshesBuffer;
-    std::vector<CommunicationBuffer> objectsBuffer;
-    std::vector<CommunicationBuffer> jointsBuffer;
+    std::optional<CommunicationBuffer> meshesBuffer;
+    std::optional<CommunicationBuffer> objectsBuffer;
+    std::optional<CommunicationBuffer> jointsBuffer;
 
     ModelManager modelManager;
 
