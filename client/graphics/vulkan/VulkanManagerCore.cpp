@@ -143,7 +143,6 @@ void updateJointMatrix(const ModelManager::ModelInfo &model, const std::vector<J
         joints[indexBase + i] =
             (model.nodes[i].parent == -1 ? idmat : joints[model.nodes[i].parent])
             * glm::translate(idmat, jointConfig[i].translation) * glm::toMat4(jointConfig[i].rotation);
-        std::cout << model.nodes[i].parent << " -> " << i << std::endl;
     }
     for (uint32_t i = 0; i < model.nodes.size(); i++) {
         joints[indexBase + i] *= model.nodes[i].inverseBindMatrix;
